@@ -80,6 +80,7 @@ contains the model, and `AppSlicerMetrics` reads the system's memory metrics:
 | `ForecasterStore` | Saves and restores the model so learning continues across restarts. |
 | `SystemMemoryReader` | Reads pressure, memory usage, compression, swap, and paging. |
 | `ProcessMemoryReader` | Reads the memory footprint of each process. |
+| `HistoryStore` | Keeps system-wide memory history in a local SQLite database. |
 
 ## Getting started
 
@@ -129,6 +130,18 @@ Mac that rarely reaches elevated pressure, this can take a long time.
 The model is saved every 5 minutes and on exit, then restored on the next run. The file
 contains only model values and recent system-wide metrics, without app names, and
 nothing is sent anywhere.
+
+Each reading is also added to a local history, which holds system-wide metrics only.
+Full readings are kept for 7 days, then summarized by minute and kept for 90 days. At
+one reading every 2 seconds, this takes about 40 MB of disk space. To inspect it:
+
+```sh
+sqlite3 ~/Library/Application\ Support/AppSlicerOS/history.sqlite \
+  "SELECT pressure_level, COUNT(*) FROM readings GROUP BY pressure_level;"
+```
+
+To delete everything the collector has stored, stop it and remove the
+`~/Library/Application Support/AppSlicerOS/` folder.
 
 ### Tests
 
@@ -198,6 +211,7 @@ AppSlicerOS/
 ├── README.pt-BR.md            # Documentation in Brazilian Portuguese
 ├── Sources/
 │   ├── AppSlicerCollector/    # Terminal metrics collector
+│   ├── AppSlicerHistory/      # Local SQLite history
 │   ├── AppSlicerML/           # Machine learning algorithms
 │   └── AppSlicerMetrics/      # System memory readings
 ├── Tests/                     # Automated tests for each module
@@ -224,8 +238,8 @@ This is an initial roadmap and may change as the project produces real data.
 - [x] Measure memory consumption per process
 - [x] Teach the model from live readings
 - [ ] Group helper processes into their apps
-- [ ] Store history locally in SQLite
-- [ ] Define a data retention policy
+- [x] Store history locally in SQLite
+- [x] Define a data retention policy
 
 ### Phase 3: app interface and real-time dashboard
 
