@@ -17,8 +17,8 @@
 </p>
 
 > [!WARNING]
-> AppSlicerOS is in early development. The project currently contains only the
-> machine learning library. There is no app to install yet.
+> AppSlicerOS is in early development. The project currently contains the machine
+> learning library and a terminal metrics collector. There is no app to install yet.
 
 ## Table of contents
 
@@ -52,7 +52,8 @@ all of this visible.
 
 ## Architecture
 
-The diagram shows the planned system. Only the forecasting model is implemented so far.
+The diagram shows the planned system. Only the metrics collector and the forecasting
+model are implemented so far, and they are not connected yet.
 
 ```mermaid
 flowchart LR
@@ -64,7 +65,8 @@ flowchart LR
     E -- Yes --> F[Action on the app]
 ```
 
-The `AppSlicerML` library is written in pure Swift, with no external dependencies:
+The project is written in pure Swift, with no external dependencies. `AppSlicerML`
+contains the model, and `AppSlicerMetrics` reads the system's memory metrics:
 
 | Component | Purpose |
 | --- | --- |
@@ -73,6 +75,8 @@ The `AppSlicerML` library is written in pure Swift, with no external dependencie
 | `EWMAAnomalyDetector` | Detects sudden deviations in a metric using an exponential moving average. |
 | `PressureForecaster` | Estimates the probability of elevated pressure within a time horizon. |
 | `ForecasterStore` | Saves and restores the model so learning continues across restarts. |
+| `SystemMemoryReader` | Reads pressure, memory usage, compression, swap, and paging. |
+| `ProcessMemoryReader` | Reads the memory footprint of each process. |
 
 ## Getting started
 
@@ -91,14 +95,38 @@ cd AppSlicerOS
 swift build
 ```
 
+### Running the collector
+
+The collector prints live memory metrics to the terminal, without storing or sending
+anything:
+
+```sh
+swift run appslicer-collector --interval 2 --top 5
+```
+
+```text
+17:45:18  pressure: normal
+  memory:  5.79 GB used of 8.00 GB (72%)
+           app 1.82 GB, wired 2.03 GB, compressed 1.94 GB
+           cached 1.53 GB, free 0.77 GB
+  swap:    2.79 GB used of 4.00 GB, pageouts -
+  top processes:
+    0.79 GB  Google Chrome Helper (Renderer) (3141)
+```
+
+Press `Ctrl-C` to stop, or run `swift run appslicer-collector --help` to see all
+options. Without root, the collector cannot read the processes of other users, such as
+many system services.
+
 ### Tests
 
 ```sh
 swift test
 ```
 
-The tests use synthetic data. They validate the model's learning and rules, but they
-do not measure its accuracy in real use.
+The model tests use synthetic data. They validate its learning and rules, but they do
+not measure its accuracy in real use. The metrics tests also read the real system to
+check that the values are plausible.
 
 ## Using the library
 
@@ -157,9 +185,10 @@ AppSlicerOS/
 ├── README.md                  # Documentation in English
 ├── README.pt-BR.md            # Documentation in Brazilian Portuguese
 ├── Sources/
-│   └── AppSlicerML/           # Machine learning algorithms
-├── Tests/
-│   └── AppSlicerMLTests/      # Automated tests
+│   ├── AppSlicerCollector/    # Terminal metrics collector
+│   ├── AppSlicerML/           # Machine learning algorithms
+│   └── AppSlicerMetrics/      # System memory readings
+├── Tests/                     # Automated tests for each module
 └── docs/
     └── assets/                # Logo and other images
 ```
@@ -179,8 +208,9 @@ This is an initial roadmap and may change as the project produces real data.
 
 ### Phase 2: metrics collection
 
-- [ ] Read system pressure, compression, swap, and paging
-- [ ] Measure memory consumption per app
+- [x] Read system pressure, compression, swap, and paging
+- [x] Measure memory consumption per process
+- [ ] Group helper processes into their apps
 - [ ] Store history locally in SQLite
 - [ ] Define a data retention policy
 
