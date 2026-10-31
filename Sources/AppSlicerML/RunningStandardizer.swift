@@ -9,6 +9,10 @@ public struct RunningStandardizer: Codable, Sendable {
         squaredDeviations = Array(repeating: 0, count: featureCount)
     }
 
+    func hasFeatureCount(_ featureCount: Int) -> Bool {
+        means.count == featureCount && squaredDeviations.count == featureCount
+    }
+
     public mutating func update(_ features: [Double]) {
         precondition(features.count == means.count, "feature count mismatch")
         count += 1

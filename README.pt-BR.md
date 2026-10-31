@@ -73,6 +73,7 @@ A biblioteca `AppSlicerML` é escrita em Swift puro, sem dependências externas:
 | `OnlineLogisticRegression` | Classifica por regressão logística, aprendendo a cada amostra com AdaGrad. |
 | `EWMAAnomalyDetector` | Detecta desvios bruscos em uma métrica por média móvel exponencial. |
 | `PressureForecaster` | Estima a probabilidade de pressão elevada dentro de um horizonte de tempo. |
+| `ForecasterStore` | Salva e restaura o modelo para que o aprendizado continue após reinícios. |
 
 ## Primeiros passos
 
@@ -131,6 +132,24 @@ O horizonte padrão é de 10 minutos. As previsões só são publicadas depois d
 exemplos de cada classe, com e sem pressão elevada. Ambos os valores podem ser
 alterados em `PressureForecaster.Configuration`.
 
+### Como salvar o modelo
+
+Use o `ForecasterStore` para manter o que o modelo aprendeu entre as execuções:
+
+```swift
+import AppSlicerML
+
+let store = ForecasterStore(fileURL: try ForecasterStore.defaultFileURL())
+var forecaster = try store.load(configuration: PressureForecaster.Configuration())
+
+// Envie as amostras e salve periodicamente e antes de encerrar.
+try store.save(forecaster)
+```
+
+O modelo fica em `~/Library/Application Support/AppSlicerOS/`, com leitura restrita ao
+usuário atual. Se o arquivo estiver ausente, corrompido ou for de uma versão ou
+configuração incompatível, o modelo recomeça do zero.
+
 ## Estrutura do projeto
 
 ```text
@@ -157,7 +176,7 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 - [x] Detector de anomalias
 - [x] Previsão de pressão de memória
 - [x] Testes com dados sintéticos
-- [ ] Salvar e restaurar o modelo em disco
+- [x] Salvar e restaurar o modelo em disco
 
 ### Fase 2: coleta de métricas
 
@@ -189,7 +208,7 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 
 ### Fase 6: distribuição
 
-- [ ] Configurar integração contínua com GitHub Actions
+- [x] Configurar integração contínua com GitHub Actions
 - [ ] Assinar e notarizar o app com Developer ID
 - [ ] Publicar a primeira versão
 

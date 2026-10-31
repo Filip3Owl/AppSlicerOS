@@ -32,7 +32,7 @@ public struct MemorySample: Codable, Equatable, Sendable {
 /// Each sample is held until its horizon has passed, because only then is its true label
 /// known. The model therefore never trains on information from the sample's own future.
 public struct PressureForecaster: Codable, Sendable {
-    public struct Configuration: Codable, Sendable {
+    public struct Configuration: Codable, Equatable, Sendable {
         public var horizon: TimeInterval = 600
         /// Longer gaps, such as the Mac sleeping, leave outcomes unobserved, so pending
         /// samples are discarded instead of being labeled as calm.
@@ -54,7 +54,8 @@ public struct PressureForecaster: Codable, Sendable {
     public private(set) var positiveExampleCount = 0
     public private(set) var negativeExampleCount = 0
 
-    private let configuration: Configuration
+    public let configuration: Configuration
+
     private var standardizer = RunningStandardizer(featureCount: featureCount)
     private var model = OnlineLogisticRegression(featureCount: featureCount)
     private var pending: [PendingExample] = []
@@ -70,6 +71,13 @@ public struct PressureForecaster: Codable, Sendable {
     }
 
     public var pendingExampleCount: Int { pending.count }
+
+    /// Guards against decoded state that would violate the feature count preconditions.
+    var hasConsistentState: Bool {
+        standardizer.hasFeatureCount(Self.featureCount)
+            && model.hasFeatureCount(Self.featureCount)
+            && pending.allSatisfy { $0.features.count == Self.featureCount }
+    }
 
     /// Learns from any outcomes this sample resolves and forecasts from its features.
     /// - Returns: The probability of elevated pressure within the horizon, or `nil` while
