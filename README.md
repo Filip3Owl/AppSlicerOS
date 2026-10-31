@@ -72,6 +72,7 @@ The `AppSlicerML` library is written in pure Swift, with no external dependencie
 | `OnlineLogisticRegression` | Classifies with logistic regression, learning from each sample with AdaGrad. |
 | `EWMAAnomalyDetector` | Detects sudden deviations in a metric using an exponential moving average. |
 | `PressureForecaster` | Estimates the probability of elevated pressure within a time horizon. |
+| `ForecasterStore` | Saves and restores the model so learning continues across restarts. |
 
 ## Getting started
 
@@ -130,6 +131,24 @@ The default horizon is 10 minutes. Forecasts are published only after 20 example
 each class, with and without elevated pressure. Both values can be changed in
 `PressureForecaster.Configuration`.
 
+### Saving the model
+
+Use `ForecasterStore` to keep what the model has learned between runs:
+
+```swift
+import AppSlicerML
+
+let store = ForecasterStore(fileURL: try ForecasterStore.defaultFileURL())
+var forecaster = try store.load(configuration: PressureForecaster.Configuration())
+
+// Observe samples, then save periodically and before quitting.
+try store.save(forecaster)
+```
+
+The model is stored in `~/Library/Application Support/AppSlicerOS/`, readable only by
+the current user. If the file is missing, corrupted, or from an incompatible version
+or configuration, the model starts over.
+
 ## Project structure
 
 ```text
@@ -156,7 +175,7 @@ This is an initial roadmap and may change as the project produces real data.
 - [x] Anomaly detector
 - [x] Memory pressure forecasting
 - [x] Tests with synthetic data
-- [ ] Save and restore the model on disk
+- [x] Save and restore the model on disk
 
 ### Phase 2: metrics collection
 
@@ -188,7 +207,7 @@ This is an initial roadmap and may change as the project produces real data.
 
 ### Phase 6: distribution
 
-- [ ] Set up continuous integration with GitHub Actions
+- [x] Set up continuous integration with GitHub Actions
 - [ ] Sign and notarize the app with Developer ID
 - [ ] Publish the first release
 
