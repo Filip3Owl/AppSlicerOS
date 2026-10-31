@@ -17,6 +17,10 @@ public struct OnlineLogisticRegression: Codable, Sendable {
         self.l2 = l2
     }
 
+    func hasFeatureCount(_ featureCount: Int) -> Bool {
+        weights.count == featureCount && weightGradientSums.count == featureCount
+    }
+
     public func probability(_ features: [Double]) -> Double {
         precondition(features.count == weights.count, "feature count mismatch")
         var logit = bias
