@@ -1,0 +1,66 @@
+"nav.overview" = "Visão geral";
+"nav.apps" = "Apps";
+"nav.forecast" = "Previsão";
+"nav.settings" = "Ajustes";
+
+"status.calm.label" = "Tudo normal";
+"status.calm.title" = "Seu Mac está bem.";
+"status.calm.detail" = "A memória está sob controle, e nada indica lentidão nos próximos minutos.";
+"status.learning.label" = "Aprendendo";
+"status.learning.detail" = "Estas métricas são reais. As previsões aparecem depois que o AppSlicerOS conhecer melhor o seu uso.";
+"status.attention.label" = "Atenção";
+"status.soon.title" = "A memória pode apertar em breve.";
+"status.soon.detail" = "Há chance alta de lentidão nos próximos 10 minutos.";
+"status.now.title" = "A memória está apertada agora.";
+"status.now.detail" = "O macOS informa pressão de memória elevada, então os apps podem responder mais devagar.";
+
+"tile.memory" = "Memória usada";
+"tile.memory.of" = "de %@";
+"tile.swap" = "Swap";
+"tile.swap.growing" = "crescendo";
+"tile.swap.steady" = "sem crescer";
+"tile.pressure" = "Pressão do sistema";
+"tile.pressure.detail" = "informada pelo macOS";
+"pressure.normal" = "Normal";
+"pressure.elevated" = "Elevada";
+
+"chart.title" = "Memória usada na última hora";
+"chart.summary" = "Agora %1$@, com pico de %2$@ na última hora.";
+"chart.empty" = "Ainda não há histórico. O gráfico aparece quando a coleta tiver dados.";
+"chart.axis.time" = "Horário";
+"chart.axis.used" = "Memória usada";
+
+"collection.notice.title" = "O histórico não está sendo atualizado";
+"collection.active" = "Em execução. Cada leitura entra no histórico neste Mac.";
+"collection.stopped" = "A coleta em segundo plano parou, então o histórico e o modelo não estão sendo atualizados.";
+"collection.never" = "A coleta em segundo plano ainda não começou, então não há histórico para mostrar.";
+
+"apps.detail" = "Os apps que mais usam memória, com seus processos auxiliares somados.";
+"apps.processes" = "%d processos";
+"apps.unreadable" = "%d processos do sistema não podem ser lidos sem acesso de administrador e não estão na lista.";
+
+"forecast.page.detail" = "O que o modelo espera para os próximos 10 minutos, calculado apenas neste Mac.";
+"forecast.unavailable.title" = "Previsão indisponível";
+"forecast.unavailable.detail" = "Não foi possível ler o modelo. As métricas no restante do app não são afetadas.";
+"forecast.learning.title" = "Ainda aprendendo com o seu uso";
+"forecast.learning.detail" = "Ainda não há exemplos suficientes para uma previsão confiável.";
+"forecast.high.title" = "Chance alta de lentidão";
+"forecast.low.title" = "Chance baixa de lentidão";
+"forecast.ready.detail" = "O modelo estima %@ de chance de pressão de memória elevada nos próximos 10 minutos.";
+"forecast.progress.title" = "Aprendizado do modelo";
+"forecast.progress.detail" = "Para prever, ele precisa observar momentos calmos e momentos de memória apertada no seu Mac.";
+"forecast.progress.calm" = "Momentos calmos";
+"forecast.progress.elevated" = "Memória apertada";
+"forecast.progress.count" = "%1$d de %2$d";
+
+"settings.collection.title" = "Coleta em segundo plano";
+"settings.privacy.title" = "Privacidade";
+"settings.privacy.detail" = "Seu histórico e o modelo ficam só neste Mac. Nada é enviado para fora.";
+"settings.privacy.show" = "Mostrar no Finder";
+
+"menu.open" = "Abrir o AppSlicerOS";
+"menu.quit" = "Encerrar";
+
+"loading" = "Lendo as métricas de memória…";
+"error.title" = "Não foi possível ler as métricas de memória";
+"error.detail" = "O AppSlicerOS continuará tentando. Se isso persistir, reinicie o app.";

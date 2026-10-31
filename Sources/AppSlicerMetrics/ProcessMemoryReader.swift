@@ -25,12 +25,88 @@ public struct ProcessMemoryReport: Equatable, Sendable {
     }
 }
 
+/// The combined footprint of an app and its helper processes.
+public struct AppMemory: Equatable, Sendable {
+    public let name: String
+    public let footprintBytes: UInt64
+    public let processCount: Int
+
+    public init(name: String, footprintBytes: UInt64, processCount: Int) {
+        self.name = name
+        self.footprintBytes = footprintBytes
+        self.processCount = processCount
+    }
+}
+
+public struct AppMemoryReport: Equatable, Sendable {
+    /// Sorted by footprint, largest first.
+    public let apps: [AppMemory]
+    /// Processes the current user lacks permission to read, such as system services.
+    public let unreadableCount: Int
+
+    public init(apps: [AppMemory], unreadableCount: Int) {
+        self.apps = apps
+        self.unreadableCount = unreadableCount
+    }
+}
+
 /// Reads per-process memory usage. Without root, other users' processes are not readable.
 public struct ProcessMemoryReader: Sendable {
     public init() {}
 
     public func readTopProcesses(limit: Int) throws -> ProcessMemoryReport {
-        var processes: [ProcessMemory] = []
+        let result = try readProcesses(includingPaths: false)
+        return ProcessMemoryReport(
+            processes: Self.largest(result.processes.map(\.process), limit: limit),
+            unreadableCount: result.unreadableCount
+        )
+    }
+
+    public func readApps(limit: Int) throws -> AppMemoryReport {
+        let result = try readProcesses(includingPaths: true)
+        let grouped = result.processes.map { entry in
+            (name: Self.appName(forExecutablePath: entry.path, fallback: entry.process.name),
+             footprintBytes: entry.process.footprintBytes)
+        }
+        return AppMemoryReport(
+            apps: Self.grouped(grouped, limit: limit),
+            unreadableCount: result.unreadableCount
+        )
+    }
+
+    /// Uses the outermost app bundle in the path, so a helper nested inside an app counts
+    /// toward that app. Anything outside a bundle keeps its process name.
+    static func appName(forExecutablePath path: String?, fallback: String) -> String {
+        guard let path else { return fallback }
+        for component in path.split(separator: "/") where component.hasSuffix(".app") {
+            return String(component.dropLast(4))
+        }
+        return fallback
+    }
+
+    static func grouped(
+        _ processes: [(name: String, footprintBytes: UInt64)],
+        limit: Int
+    ) -> [AppMemory] {
+        var totals: [String: (bytes: UInt64, count: Int)] = [:]
+        for process in processes {
+            let current = totals[process.name] ?? (0, 0)
+            totals[process.name] = (current.bytes + process.footprintBytes, current.count + 1)
+        }
+        let apps = totals
+            .map { AppMemory(name: $0.key, footprintBytes: $0.value.bytes, processCount: $0.value.count) }
+            .sorted { first, second in
+                first.footprintBytes != second.footprintBytes
+                    ? first.footprintBytes > second.footprintBytes
+                    : first.name < second.name
+            }
+        return Array(apps.prefix(max(limit, 0)))
+    }
+
+    private func readProcesses(
+        includingPaths: Bool
+    ) throws -> (processes: [(process: ProcessMemory, path: String?)], unreadableCount: Int) {
+        var processes: [(process: ProcessMemory, path: String?)] = []
         var unreadableCount = 0
 
         for pid in try listProcessIDs() {
@@ -46,16 +122,16 @@ public struct ProcessMemoryReader: Sendable {
                 continue
             }
             if usage.ri_phys_footprint > 0 {
-                processes.append(
-                    ProcessMemory(pid: pid, name: processName(pid), footprintBytes: usage.ri_phys_footprint)
+                let process = ProcessMemory(
+                    pid: pid,
+                    name: processName(pid),
+                    footprintBytes: usage.ri_phys_footprint
                 )
+                processes.append((process, includingPaths ? executablePath(pid) : nil))
             }
         }
 
-        return ProcessMemoryReport(
-            processes: Self.largest(processes, limit: limit),
-            unreadableCount: unreadableCount
-        )
+        return (processes, unreadableCount)
     }
 
     static func largest(_ processes: [ProcessMemory], limit: Int) -> [ProcessMemory] {
@@ -80,6 +156,13 @@ public struct ProcessMemoryReader: Sendable {
             throw MetricsError.processListFailed(code: errno)
         }
         return Array(pids.prefix(Int(count)))
+    }
+
+    private func executablePath(_ pid: Int32) -> String? {
+        // PROC_PIDPATHINFO_MAXSIZE is not available to Swift. This is its value.
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
+        return length > 0 ? String(decoding: buffer.prefix(Int(length)), as: UTF8.self) : nil
     }
 
     private func processName(_ pid: Int32) -> String {

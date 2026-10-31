@@ -18,8 +18,8 @@
 
 > [!WARNING]
 > AppSlicerOS is in early development. The project currently contains the machine
-> learning library and a terminal collector that feeds it with real readings. There is
-> no app to install yet.
+> learning library, a terminal collector that feeds it with real readings, and a first
+> version of the interface. There is no installable app yet, so it runs from the source.
 
 ## Table of contents
 
@@ -55,8 +55,8 @@ real-time dashboard will make all of this visible and easy to control.
 
 ## Architecture
 
-The diagram shows the planned system. Only the metrics collector and the forecasting
-model are implemented so far.
+The diagram shows the planned system. The metrics collector, the forecasting model, and
+the dashboard are implemented so far.
 
 ```mermaid
 flowchart LR
@@ -97,6 +97,20 @@ So far, the project has only been built and tested on an Intel Mac running macOS
 git clone https://github.com/Filip3Owl/AppSlicerOS.git
 cd AppSlicerOS
 swift build
+```
+
+### Running the app
+
+```sh
+swift run appslicer-app
+```
+
+The app opens a window and adds an item to the menu bar. It reads live metrics only while
+a window or the menu bar panel is showing, and it shows the history and forecasts saved
+by the collector. It follows your system language, and you can try Portuguese with:
+
+```sh
+swift run appslicer-app -AppleLanguages '(pt-BR)'
 ```
 
 ### Running the collector
@@ -210,6 +224,7 @@ AppSlicerOS/
 ├── README.md                  # Documentation in English
 ├── README.pt-BR.md            # Documentation in Brazilian Portuguese
 ├── Sources/
+│   ├── AppSlicerApp/          # SwiftUI interface
 │   ├── AppSlicerCollector/    # Terminal metrics collector
 │   ├── AppSlicerHistory/      # Local SQLite history
 │   ├── AppSlicerML/           # Machine learning algorithms
@@ -237,20 +252,22 @@ This is an initial roadmap and may change as the project produces real data.
 - [x] Read system pressure, compression, swap, and paging
 - [x] Measure memory consumption per process
 - [x] Teach the model from live readings
-- [ ] Group helper processes into their apps
+- [x] Group helper processes into their apps
 - [x] Store history locally in SQLite
 - [x] Define a data retention policy
 
 ### Phase 3: app interface and real-time dashboard
 
-- [ ] Prototype and validate the interface
-- [ ] Build the main window with sidebar navigation in SwiftUI
-- [ ] Add a menu bar item for a quick glance and common actions
-- [ ] Display real-time charts with Swift Charts
-- [ ] List the apps using the most memory
-- [ ] Show the model's forecast and learning status in plain language
-- [ ] Support light and dark mode, VoiceOver, and keyboard navigation
-- [ ] Localize the interface in English and Brazilian Portuguese
+- [x] Prototype and validate the interface
+- [x] Build the main window with sidebar navigation in SwiftUI
+- [x] Add a menu bar item for a quick glance and common actions
+- [x] Display real-time charts with Swift Charts
+- [x] List the apps using the most memory
+- [x] Show the model's forecast and learning status in plain language
+- [x] Support light and dark mode
+- [x] Localize the interface in English and Brazilian Portuguese
+- [ ] Verify VoiceOver and keyboard navigation
+- [ ] Measure the interface against the RAM and CPU targets in prolonged use
 
 ### Phase 4: validation with real data
 

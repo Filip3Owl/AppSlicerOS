@@ -90,6 +90,35 @@ private func makeCounters(
     }
 }
 
+@Suite struct AppGroupingTests {
+    @Test func usesTheOutermostAppBundle() {
+        let helper = "/Applications/Google Chrome.app/Contents/Frameworks/Helper (Renderer).app/Contents/MacOS/Helper"
+        #expect(ProcessMemoryReader.appName(forExecutablePath: helper, fallback: "Helper") == "Google Chrome")
+    }
+
+    @Test func keepsTheProcessNameOutsideABundle() {
+        #expect(ProcessMemoryReader.appName(forExecutablePath: "/usr/bin/ssh", fallback: "ssh") == "ssh")
+        #expect(ProcessMemoryReader.appName(forExecutablePath: nil, fallback: "kernel") == "kernel")
+    }
+
+    @Test func combinesProcessesAndSortsByFootprint() {
+        let apps = ProcessMemoryReader.grouped(
+            [(name: "Chrome", footprintBytes: 10), (name: "Mail", footprintBytes: 25), (name: "Chrome", footprintBytes: 20)],
+            limit: 5
+        )
+        #expect(apps == [
+            AppMemory(name: "Chrome", footprintBytes: 30, processCount: 2),
+            AppMemory(name: "Mail", footprintBytes: 25, processCount: 1),
+        ])
+    }
+
+    @Test func respectsTheLimit() {
+        let processes = [(name: "A", footprintBytes: UInt64(1)), (name: "B", footprintBytes: UInt64(2))]
+        #expect(ProcessMemoryReader.grouped(processes, limit: 1).map(\.name) == ["B"])
+        #expect(ProcessMemoryReader.grouped(processes, limit: -1).isEmpty)
+    }
+}
+
 /// These tests read the real system, which is why they check invariants and not values.
 @Suite struct LiveReadingTests {
     @Test func readsPlausibleSystemMetrics() throws {
@@ -99,6 +128,12 @@ private func makeCounters(
         #expect(snapshot.usedBytes > 0)
         #expect(snapshot.usedBytes <= snapshot.counters.physicalMemoryBytes)
         #expect(snapshot.counters.swapUsedBytes <= snapshot.counters.swapTotalBytes)
+    }
+
+    @Test func readsAppsSortedByFootprint() throws {
+        let apps = try ProcessMemoryReader().readApps(limit: Int.max).apps
+        #expect(!apps.isEmpty)
+        #expect(apps.map(\.footprintBytes) == apps.map(\.footprintBytes).sorted(by: >))
     }
 
     @Test func findsTheCurrentProcess() throws {
