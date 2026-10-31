@@ -5,7 +5,8 @@ struct CollectorOptions: Equatable {
     Usage: appslicer-collector [options]
 
     Prints live memory metrics and forecasts, while the model learns from each reading.
-    The model is saved on this Mac every 5 minutes and on exit. Nothing is sent anywhere.
+    The model is saved on this Mac every 5 minutes and on exit, and each reading is added to
+    a local history without app names. Nothing is sent anywhere.
 
     Options:
       --interval <seconds>  Time between readings, from 0.5 to 30 (default: 2)
@@ -13,6 +14,7 @@ struct CollectorOptions: Equatable {
       --count <readings>    Stop after this many readings (default: run until Ctrl-C)
       --model-file <path>   Where to keep the model
                             (default: ~/Library/Application Support/AppSlicerOS/)
+      --history-file <path> Where to keep the history (default: same folder as the model)
       --help                Show this message
     """
 
@@ -25,6 +27,7 @@ struct CollectorOptions: Equatable {
     var top = 5
     var count: Int?
     var modelFile: String?
+    var historyFile: String?
 
     init() {}
 
@@ -56,6 +59,11 @@ struct CollectorOptions: Equatable {
                     throw ParseError.invalid("--model-file must be followed by a file path")
                 }
                 modelFile = value
+            case "--history-file":
+                guard let value = remaining.popFirst(), !value.isEmpty, !value.hasPrefix("--") else {
+                    throw ParseError.invalid("--history-file must be followed by a file path")
+                }
+                historyFile = value
             default:
                 throw ParseError.invalid("unknown option \(argument)")
             }

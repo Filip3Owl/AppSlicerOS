@@ -1,3 +1,4 @@
+import AppSlicerHistory
 import AppSlicerMetrics
 import AppSlicerML
 import Foundation
@@ -40,6 +41,9 @@ private final class CollectorRunner {
     private let modelFile: URL
     private let timeFormatter = DateFormatter()
     private var session: LiveForecastSession
+    private var history: HistoryRecorder
+    private var historyIsFailing = false
+    private let historyFile: URL
     private var previous: MemorySnapshot?
     private var readings = 0
     private var sources: [any DispatchSourceProtocol] = []
@@ -53,11 +57,16 @@ private final class CollectorRunner {
             saveInterval: Self.saveInterval,
             now: Date()
         )
+        historyFile = try options.historyFile.map { URL(fileURLWithPath: $0) } ?? HistoryStore.defaultFileURL()
+        history = HistoryRecorder(store: try HistoryStore(fileURL: historyFile))
         timeFormatter.dateFormat = "HH:mm:ss"
     }
 
     func start() {
-        Console.write("model file: \(modelFile.path)\n\n", to: .standardOutput)
+        Console.write(
+            "model file: \(modelFile.path)\nhistory file: \(historyFile.path)\n\n",
+            to: .standardOutput
+        )
         observe(signalNumber: SIGINT)
         observe(signalNumber: SIGTERM)
 
@@ -102,6 +111,7 @@ private final class CollectorRunner {
             previous = snapshot
             readings += 1
             saveIfDue()
+            record(snapshot, pageoutsPerSecond: rate)
         } catch {
             Console.write("error: could not read memory metrics: \(error)\n", to: .standardError)
             finish(exitCode: 1)
@@ -118,6 +128,20 @@ private final class CollectorRunner {
             try session.saveIfDue(now: Date())
         } catch {
             Console.write("warning: could not save the model: \(error)\n", to: .standardError)
+        }
+    }
+
+    /// A failed write loses one reading, so the collector keeps running. It warns once per
+    /// failure period, because readings can arrive every few seconds.
+    private func record(_ snapshot: MemorySnapshot, pageoutsPerSecond: Double?) {
+        do {
+            try history.record(snapshot, pageoutsPerSecond: pageoutsPerSecond, now: snapshot.timestamp)
+            historyIsFailing = false
+        } catch {
+            if !historyIsFailing {
+                Console.write("warning: could not update the history: \(error)\n", to: .standardError)
+            }
+            historyIsFailing = true
         }
     }
 

@@ -1,3 +1,4 @@
+import AppSlicerHistory
 import AppSlicerML
 import AppSlicerMetrics
 import Foundation
@@ -34,16 +35,19 @@ private func makeSnapshot(
         #expect(options.top == 5)
         #expect(options.count == nil)
         #expect(options.modelFile == nil)
+        #expect(options.historyFile == nil)
     }
 
     @Test func parsesAllOptions() throws {
         let options = try CollectorOptions(arguments: [
             "--interval", "0.5", "--top", "0", "--count", "3", "--model-file", "/tmp/m.model.json",
+            "--history-file", "/tmp/h.sqlite",
         ])
         #expect(options.interval == 0.5)
         #expect(options.top == 0)
         #expect(options.count == 3)
         #expect(options.modelFile == "/tmp/m.model.json")
+        #expect(options.historyFile == "/tmp/h.sqlite")
     }
 
     @Test(arguments: [
@@ -58,6 +62,9 @@ private func makeSnapshot(
         ["--model-file"],
         ["--model-file", ""],
         ["--model-file", "--top"],
+        ["--history-file"],
+        ["--history-file", ""],
+        ["--history-file", "--top"],
         ["--unknown"],
     ])
     func rejectsInvalidArguments(arguments: [String]) {
@@ -202,5 +209,30 @@ private func makeSnapshot(
         #expect(second.forecaster.negativeExampleCount == first.forecaster.negativeExampleCount)
         #expect(second.forecaster.negativeExampleCount > 0)
         #expect(second.forecaster.pendingExampleCount == first.forecaster.pendingExampleCount)
+    }
+}
+
+@Suite struct HistoryRecorderTests {
+    @Test func recordsReadingsAndAppliesRetentionHourly() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AppSlicerOSRecorderTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try HistoryStore(fileURL: directory.appendingPathComponent("h.sqlite"))
+        var recorder = HistoryRecorder(store: store)
+        let week: TimeInterval = 7 * 86_400
+        let start: TimeInterval = 100 * 86_400
+        let first = Date(timeIntervalSince1970: 0)
+        let last = Date(timeIntervalSince1970: 200 * 86_400)
+        func readings() throws -> Int { try store.readings(from: first, through: last).count }
+
+        // The first call applies retention. Later calls wait for the hourly interval.
+        try recorder.record(makeSnapshot(timestamp: start), pageoutsPerSecond: nil, now: Date(timeIntervalSince1970: start))
+        let old = start - week - 3_600
+        try recorder.record(makeSnapshot(timestamp: old), pageoutsPerSecond: nil, now: Date(timeIntervalSince1970: start + 3_599))
+        #expect(try readings() == 2)
+
+        try recorder.record(makeSnapshot(timestamp: start + 1), pageoutsPerSecond: nil, now: Date(timeIntervalSince1970: start + 3_600))
+        #expect(try readings() == 2)
+        #expect(try store.minuteSummaries(from: first, through: last).count == 1)
     }
 }
