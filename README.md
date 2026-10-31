@@ -3,83 +3,86 @@
 </h1>
 
 <p align="center">
-  <strong>Machine learning embutido para antecipar a pressão de memória no macOS.</strong>
+  <strong>Embedded machine learning to anticipate memory pressure on macOS.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-em%20desenvolvimento-E3242B" alt="Status: em desenvolvimento">
-  <img src="https://img.shields.io/badge/macOS-13%2B-7D8590" alt="macOS 13 ou superior">
+  <img src="https://img.shields.io/badge/status-in%20development-E3242B" alt="Status: in development">
+  <img src="https://img.shields.io/badge/macOS-13%2B-7D8590" alt="macOS 13 or later">
   <img src="https://img.shields.io/badge/Swift-6-7D8590" alt="Swift 6">
 </p>
 
+<p align="center">
+  <strong>English</strong> | <a href="README.pt-BR.md">Português (Brasil)</a>
+</p>
+
 > [!WARNING]
-> O AppSlicerOS está no início do desenvolvimento. Hoje, o projeto contém apenas a
-> biblioteca de machine learning. Ainda não existe um aplicativo para instalar.
+> AppSlicerOS is in early development. The project currently contains only the
+> machine learning library. There is no app to install yet.
 
-## Índice
+## Table of contents
 
-- [Sobre o projeto](#sobre-o-projeto)
-- [Princípios](#princípios)
-- [Arquitetura](#arquitetura)
-- [Primeiros passos](#primeiros-passos)
-- [Como usar a biblioteca](#como-usar-a-biblioteca)
-- [Estrutura do projeto](#estrutura-do-projeto)
+- [About](#about)
+- [Principles](#principles)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Using the library](#using-the-library)
+- [Project structure](#project-structure)
 - [Roadmap](#roadmap)
-- [Fluxo de desenvolvimento](#fluxo-de-desenvolvimento)
-- [Licença](#licença)
+- [Development workflow](#development-workflow)
+- [License](#license)
 
-## Sobre o projeto
+## About
 
-O macOS já gerencia a memória do sistema, e nenhum aplicativo pode assumir esse
-controle. Por isso, o AppSlicerOS não promete "limpar" a RAM, prática que costuma
-descartar cache útil e deixar o Mac mais lento.
+macOS already manages system memory, and no app can take over that job. That is why
+AppSlicerOS does not promise to "clean" your RAM, a practice that tends to discard
+useful cache and slow the Mac down.
 
-O objetivo é outro: aprender como cada Mac é usado, prever momentos de pressão de
-memória e ajudar o usuário a agir antes que o sistema fique lento. Tudo isso será
-acompanhado por um dashboard em tempo real.
+The goal is different: learn how each Mac is used, predict periods of memory pressure,
+and help the user act before the system slows down. A real-time dashboard will make
+all of this visible.
 
-## Princípios
+## Principles
 
-- **Processamento local:** os dados de uso e o treinamento ficam no próprio Mac.
-- **Leveza:** a meta é consumir menos de 100 MB de RAM e menos de 2% de CPU em média.
-- **Controle do usuário:** nenhum app será fechado sem autorização.
-- **Resultados mensuráveis:** o sucesso é medido por menos tempo sob pressão e menos
-  crescimento do swap, não pela quantidade de memória livre.
+- **Local processing:** usage data and training stay on the Mac.
+- **Low overhead:** the target is under 100 MB of RAM and under 2% average CPU.
+- **User control:** no app will be closed without authorization.
+- **Measurable results:** success means less time under pressure and less swap growth,
+  not more free memory.
 
-## Arquitetura
+## Architecture
 
-O diagrama mostra o sistema planejado. Por enquanto, apenas o modelo de previsão está
-implementado.
+The diagram shows the planned system. Only the forecasting model is implemented so far.
 
 ```mermaid
 flowchart LR
-    A[Coletor de métricas] --> B[Modelo de previsão]
+    A[Metrics collector] --> B[Forecasting model]
     A --> C[Dashboard]
     B --> C
-    B --> D[Recomendações]
-    D --> E{Usuário autoriza?}
-    E -- Sim --> F[Ação sobre o app]
+    B --> D[Recommendations]
+    D --> E{User authorizes?}
+    E -- Yes --> F[Action on the app]
 ```
 
-A biblioteca `AppSlicerML` é escrita em Swift puro, sem dependências externas:
+The `AppSlicerML` library is written in pure Swift, with no external dependencies:
 
-| Componente | Função |
+| Component | Purpose |
 | --- | --- |
-| `RunningStandardizer` | Normaliza as métricas de forma incremental, pelo algoritmo de Welford. |
-| `OnlineLogisticRegression` | Classifica por regressão logística, aprendendo a cada amostra com AdaGrad. |
-| `EWMAAnomalyDetector` | Detecta desvios bruscos em uma métrica por média móvel exponencial. |
-| `PressureForecaster` | Estima a probabilidade de pressão elevada dentro de um horizonte de tempo. |
+| `RunningStandardizer` | Normalizes metrics incrementally using Welford's algorithm. |
+| `OnlineLogisticRegression` | Classifies with logistic regression, learning from each sample with AdaGrad. |
+| `EWMAAnomalyDetector` | Detects sudden deviations in a metric using an exponential moving average. |
+| `PressureForecaster` | Estimates the probability of elevated pressure within a time horizon. |
 
-## Primeiros passos
+## Getting started
 
-### Pré-requisitos
+### Prerequisites
 
-- macOS 13 ou superior
-- Swift 6, incluído nas Command Line Tools (o Xcode não é obrigatório)
+- macOS 13 or later
+- Swift 6, included with the Command Line Tools (Xcode is not required)
 
-Até agora, o projeto foi compilado e testado apenas em um Mac Intel com macOS 15.
+So far, the project has only been built and tested on an Intel Mac running macOS 15.
 
-### Instalação
+### Installation
 
 ```sh
 git clone https://github.com/Filip3Owl/AppSlicerOS.git
@@ -87,19 +90,19 @@ cd AppSlicerOS
 swift build
 ```
 
-### Testes
+### Tests
 
 ```sh
 swift test
 ```
 
-Os testes usam dados sintéticos. Eles validam o aprendizado e as regras do modelo,
-mas não medem sua precisão em uso real.
+The tests use synthetic data. They validate the model's learning and rules, but they
+do not measure its accuracy in real use.
 
-## Como usar a biblioteca
+## Using the library
 
-Envie uma amostra de memória a cada leitura. O modelo aprende sozinho à medida que os
-resultados de cada amostra se tornam conhecidos.
+Pass in a memory sample at each reading. The model learns on its own as the outcome of
+each sample becomes known.
 
 ```swift
 import AppSlicerML
@@ -117,86 +120,90 @@ let sample = MemorySample(
 )
 
 if let probability = forecaster.observe(sample) {
-    print("Chance de pressão elevada: \(Int(probability * 100))%")
+    print("Chance of elevated pressure: \(Int(probability * 100))%")
 } else {
-    print("O modelo ainda está aprendendo.")
+    print("The model is still learning.")
 }
 ```
 
-O horizonte padrão é de 10 minutos. As previsões só são publicadas depois de 20
-exemplos de cada classe, com e sem pressão elevada. Ambos os valores podem ser
-alterados em `PressureForecaster.Configuration`.
+The default horizon is 10 minutes. Forecasts are published only after 20 examples of
+each class, with and without elevated pressure. Both values can be changed in
+`PressureForecaster.Configuration`.
 
-## Estrutura do projeto
+## Project structure
 
 ```text
 AppSlicerOS/
-├── Package.swift              # Definição do pacote Swift
+├── Package.swift              # Swift package definition
+├── README.md                  # Documentation in English
+├── README.pt-BR.md            # Documentation in Brazilian Portuguese
 ├── Sources/
-│   └── AppSlicerML/           # Algoritmos de machine learning
+│   └── AppSlicerML/           # Machine learning algorithms
 ├── Tests/
-│   └── AppSlicerMLTests/      # Testes automatizados
+│   └── AppSlicerMLTests/      # Automated tests
 └── docs/
-    └── assets/                # Logo e demais imagens
+    └── assets/                # Logo and other images
 ```
 
 ## Roadmap
 
-O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
+This is an initial roadmap and may change as the project produces real data.
 
-### Fase 1: núcleo de machine learning
+### Phase 1: machine learning core
 
-- [x] Normalização incremental das métricas
-- [x] Regressão logística com aprendizado online
-- [x] Detector de anomalias
-- [x] Previsão de pressão de memória
-- [x] Testes com dados sintéticos
-- [ ] Salvar e restaurar o modelo em disco
+- [x] Incremental metric normalization
+- [x] Logistic regression with online learning
+- [x] Anomaly detector
+- [x] Memory pressure forecasting
+- [x] Tests with synthetic data
+- [ ] Save and restore the model on disk
 
-### Fase 2: coleta de métricas
+### Phase 2: metrics collection
 
-- [ ] Ler pressão, compressão, swap e paginação do sistema
-- [ ] Medir o consumo de memória por app
-- [ ] Guardar o histórico localmente em SQLite
-- [ ] Definir uma política de retenção dos dados
+- [ ] Read system pressure, compression, swap, and paging
+- [ ] Measure memory consumption per app
+- [ ] Store history locally in SQLite
+- [ ] Define a data retention policy
 
-### Fase 3: dashboard em tempo real
+### Phase 3: real-time dashboard
 
-- [ ] Criar o app de barra de menus em SwiftUI
-- [ ] Exibir gráficos em tempo real com Swift Charts
-- [ ] Listar os apps que mais consomem memória
-- [ ] Mostrar a previsão do modelo e o estado do aprendizado
+- [ ] Build the menu bar app with SwiftUI
+- [ ] Display real-time charts with Swift Charts
+- [ ] List the apps using the most memory
+- [ ] Show the model's forecast and learning status
 
-### Fase 4: validação com dados reais
+### Phase 4: validation with real data
 
-- [ ] Comparar o modelo com alertas baseados em limites fixos
-- [ ] Medir a precisão das previsões em uso real
-- [ ] Verificar as metas de consumo de RAM e CPU
+- [ ] Compare the model against fixed-threshold alerts
+- [ ] Measure forecast accuracy in real use
+- [ ] Verify the RAM and CPU targets
 
-### Fase 5: recomendações e ações
+### Phase 5: recommendations and actions
 
-- [ ] Identificar apps ociosos que podem ser fechados
-- [ ] Enviar alertas antes dos picos de pressão
-- [ ] Fechar apps mediante confirmação do usuário
-- [ ] Permitir automação apenas para apps autorizados
-- [ ] Bloquear ações sobre processos do sistema
+- [ ] Identify idle apps that can be closed
+- [ ] Send alerts ahead of pressure spikes
+- [ ] Close apps upon user confirmation
+- [ ] Allow automation only for authorized apps
+- [ ] Block actions on system processes
 
-### Fase 6: distribuição
+### Phase 6: distribution
 
-- [ ] Configurar integração contínua com GitHub Actions
-- [ ] Assinar e notarizar o app com Developer ID
-- [ ] Publicar a primeira versão
+- [ ] Set up continuous integration with GitHub Actions
+- [ ] Sign and notarize the app with Developer ID
+- [ ] Publish the first release
 
-## Fluxo de desenvolvimento
+## Development workflow
 
-- A branch `main` deve permanecer estável; o trabalho acontece em branches curtas,
-  como `feat/...`, `fix/...`, `docs/...` e `chore/...`.
-- As mudanças entram na `main` por pull request, com os testes passando.
-- Os commits seguem o padrão
-  [Conventional Commits](https://www.conventionalcommits.org/pt-br/).
-- Dados de uso, modelos treinados e segredos nunca entram no repositório.
+- The `main` branch must stay stable; work happens on short-lived branches such as
+  `feat/...`, `fix/...`, `docs/...`, and `chore/...`.
+- Changes reach `main` through pull requests, with passing tests.
+- Commits follow the [Conventional Commits](https://www.conventionalcommits.org/)
+  specification.
+- Usage data, trained models, and secrets never enter the repository.
+- `README.md` is the primary documentation, and `README.pt-BR.md` must be kept in sync
+  with it.
 
-## Licença
+## License
 
-Este projeto ainda não tem uma licença definida. Até lá, todos os direitos são
-reservados ao autor.
+This project does not have a license yet. Until one is chosen, all rights are reserved
+by the author.
