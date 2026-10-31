@@ -39,14 +39,16 @@ AppSlicerOS does not promise to "clean" your RAM, a practice that tends to disca
 useful cache and slow the Mac down.
 
 The goal is different: learn how each Mac is used, predict periods of memory pressure,
-and help the user act before the system slows down. A real-time dashboard will make
-all of this visible.
+and help the user act before the system slows down. A clean, modern interface with a
+real-time dashboard will make all of this visible and easy to control.
 
 ## Principles
 
 - **Local processing:** usage data and training stay on the Mac.
 - **Low overhead:** the target is under 100 MB of RAM and under 2% average CPU.
 - **User control:** no app will be closed without authorization.
+- **Clean, intuitive interface:** a modern native design, with plain language, clear
+  explanations, and accessibility built in.
 - **Measurable results:** success means less time under pressure and less swap growth,
   not more free memory.
 
@@ -184,12 +186,16 @@ This is an initial roadmap and may change as the project produces real data.
 - [ ] Store history locally in SQLite
 - [ ] Define a data retention policy
 
-### Phase 3: real-time dashboard
+### Phase 3: app interface and real-time dashboard
 
-- [ ] Build the menu bar app with SwiftUI
+- [ ] Prototype and validate the interface
+- [ ] Build the main window with sidebar navigation in SwiftUI
+- [ ] Add a menu bar item for a quick glance and common actions
 - [ ] Display real-time charts with Swift Charts
 - [ ] List the apps using the most memory
-- [ ] Show the model's forecast and learning status
+- [ ] Show the model's forecast and learning status in plain language
+- [ ] Support light and dark mode, VoiceOver, and keyboard navigation
+- [ ] Localize the interface in English and Brazilian Portuguese
 
 ### Phase 4: validation with real data
 
