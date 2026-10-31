@@ -18,7 +18,8 @@
 
 > [!WARNING]
 > AppSlicerOS is in early development. The project currently contains the machine
-> learning library and a terminal metrics collector. There is no app to install yet.
+> learning library and a terminal collector that feeds it with real readings. There is
+> no app to install yet.
 
 ## Table of contents
 
@@ -55,7 +56,7 @@ real-time dashboard will make all of this visible and easy to control.
 ## Architecture
 
 The diagram shows the planned system. Only the metrics collector and the forecasting
-model are implemented so far, and they are not connected yet.
+model are implemented so far.
 
 ```mermaid
 flowchart LR
@@ -99,8 +100,8 @@ swift build
 
 ### Running the collector
 
-The collector prints live memory metrics to the terminal, without storing or sending
-anything:
+The collector prints live memory metrics and forecasts to the terminal, while the model
+learns from each reading:
 
 ```sh
 swift run appslicer-collector --interval 2 --top 5
@@ -112,6 +113,7 @@ swift run appslicer-collector --interval 2 --top 5
            app 1.82 GB, wired 2.03 GB, compressed 1.94 GB
            cached 1.53 GB, free 0.77 GB
   swap:    2.79 GB used of 4.00 GB, pageouts -
+  forecast: learning (0/20 elevated pressure examples, 0/20 calm examples)
   top processes:
     0.79 GB  Google Chrome Helper (Renderer) (3141)
 ```
@@ -119,6 +121,14 @@ swift run appslicer-collector --interval 2 --top 5
 Press `Ctrl-C` to stop, or run `swift run appslicer-collector --help` to see all
 options. Without root, the collector cannot read the processes of other users, such as
 many system services.
+
+The model needs real examples before it can forecast: each reading becomes an example
+only after the 10-minute horizon, and it must see both calm and elevated pressure. On a
+Mac that rarely reaches elevated pressure, this can take a long time.
+
+The model is saved every 5 minutes and on exit, then restored on the next run. The file
+contains only model values and recent system-wide metrics, without app names, and
+nothing is sent anywhere.
 
 ### Tests
 
@@ -212,6 +222,7 @@ This is an initial roadmap and may change as the project produces real data.
 
 - [x] Read system pressure, compression, swap, and paging
 - [x] Measure memory consumption per process
+- [x] Teach the model from live readings
 - [ ] Group helper processes into their apps
 - [ ] Store history locally in SQLite
 - [ ] Define a data retention policy
