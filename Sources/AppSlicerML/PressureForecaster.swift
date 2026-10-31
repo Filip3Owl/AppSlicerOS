@@ -1,7 +1,7 @@
 import Foundation
 
-/// One system-wide memory reading. Fractions are relative to total RAM, or to the swap
-/// capacity in the case of `swapUsedFraction`.
+/// One system-wide memory reading. Fractions are relative to total RAM, so
+/// `swapUsedFraction` can exceed 1.
 public struct MemorySample: Codable, Equatable, Sendable {
     public var timestamp: TimeInterval
     public var usedFraction: Double

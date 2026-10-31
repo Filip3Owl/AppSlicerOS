@@ -1,50 +1,133 @@
 import AppSlicerMetrics
+import AppSlicerML
 import Foundation
 
 @main
 struct CollectorMain {
+    @MainActor
     static func main() {
         do {
             let options = try CollectorOptions(arguments: Array(CommandLine.arguments.dropFirst()))
-            try run(options)
+            try CollectorRunner(options: options).start()
         } catch CollectorOptions.ParseError.helpRequested {
-            write(CollectorOptions.usage + "\n", to: .standardOutput)
+            Console.write(CollectorOptions.usage + "\n", to: .standardOutput)
+            exit(0)
         } catch CollectorOptions.ParseError.invalid(let message) {
-            write("error: \(message)\n\n\(CollectorOptions.usage)\n", to: .standardError)
+            Console.write("error: \(message)\n\n\(CollectorOptions.usage)\n", to: .standardError)
             exit(64)
         } catch {
-            write("error: could not read memory metrics: \(error)\n", to: .standardError)
+            Console.write("error: could not start the collector: \(error)\n", to: .standardError)
             exit(1)
         }
+        dispatchMain()
+    }
+}
+
+enum Console {
+    static func write(_ text: String, to handle: FileHandle) {
+        handle.write(Data(text.utf8))
+    }
+}
+
+/// Runs entirely on the main queue, so readings, saves, and signals never overlap.
+@MainActor
+private final class CollectorRunner {
+    private static let saveInterval: TimeInterval = 300
+
+    private let options: CollectorOptions
+    private let systemReader: SystemMemoryReader
+    private let processReader = ProcessMemoryReader()
+    private let modelFile: URL
+    private let timeFormatter = DateFormatter()
+    private var session: LiveForecastSession
+    private var previous: MemorySnapshot?
+    private var readings = 0
+    private var sources: [any DispatchSourceProtocol] = []
+
+    init(options: CollectorOptions) throws {
+        self.options = options
+        systemReader = try SystemMemoryReader()
+        modelFile = try options.modelFile.map { URL(fileURLWithPath: $0) } ?? ForecasterStore.defaultFileURL()
+        session = try LiveForecastSession(
+            store: ForecasterStore(fileURL: modelFile),
+            saveInterval: Self.saveInterval,
+            now: Date()
+        )
+        timeFormatter.dateFormat = "HH:mm:ss"
     }
 
-    private static func run(_ options: CollectorOptions) throws {
-        let systemReader = try SystemMemoryReader()
-        let processReader = ProcessMemoryReader()
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm:ss"
+    func start() {
+        Console.write("model file: \(modelFile.path)\n\n", to: .standardOutput)
+        observe(signalNumber: SIGINT)
+        observe(signalNumber: SIGTERM)
 
-        var previous: MemorySnapshot?
-        var readings = 0
-        while options.count.map({ readings < $0 }) ?? true {
-            if readings > 0 {
-                Thread.sleep(forTimeInterval: options.interval)
-            }
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(
+            deadline: .now(),
+            repeating: options.interval,
+            leeway: .milliseconds(Int(options.interval * 100))
+        )
+        timer.setEventHandler { [self] in
+            MainActor.assumeIsolated { takeReading() }
+        }
+        timer.resume()
+        sources.append(timer)
+    }
+
+    private func observe(signalNumber: Int32) {
+        // Ignoring the default action lets the dispatch source handle the signal instead.
+        signal(signalNumber, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
+        source.setEventHandler { [self] in
+            MainActor.assumeIsolated { () -> Void in finish(exitCode: 0) }
+        }
+        source.resume()
+        sources.append(source)
+    }
+
+    private func takeReading() {
+        do {
             let snapshot = try systemReader.read()
             let report = options.top > 0 ? try processReader.readTopProcesses(limit: options.top) : nil
+            let rate = previous.flatMap { snapshot.pageoutsPerSecond(since: $0) }
+            let forecast = session.observe(snapshot: snapshot, pageoutsPerSecond: rate)
             let output = ReportFormatter.format(
                 time: timeFormatter.string(from: snapshot.timestamp),
                 snapshot: snapshot,
-                pageoutsPerSecond: previous.flatMap { snapshot.pageoutsPerSecond(since: $0) },
+                pageoutsPerSecond: rate,
+                forecast: forecast,
                 report: report
             )
-            write(output + "\n\n", to: .standardOutput)
+            Console.write(output + "\n\n", to: .standardOutput)
             previous = snapshot
             readings += 1
+            saveIfDue()
+        } catch {
+            Console.write("error: could not read memory metrics: \(error)\n", to: .standardError)
+            finish(exitCode: 1)
+        }
+
+        if let count = options.count, readings >= count {
+            finish(exitCode: 0)
         }
     }
 
-    private static func write(_ text: String, to handle: FileHandle) {
-        handle.write(Data(text.utf8))
+    /// A failed periodic save only delays persistence, so the collector keeps running.
+    private func saveIfDue() {
+        do {
+            try session.saveIfDue(now: Date())
+        } catch {
+            Console.write("warning: could not save the model: \(error)\n", to: .standardError)
+        }
+    }
+
+    private func finish(exitCode: Int32) -> Never {
+        do {
+            try session.save()
+            exit(exitCode)
+        } catch {
+            Console.write("error: could not save the model: \(error)\n", to: .standardError)
+            exit(1)
+        }
     }
 }

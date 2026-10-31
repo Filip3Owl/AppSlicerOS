@@ -36,7 +36,7 @@ private func makeCounters(
         #expect(snapshot.freeBytes == 200)
         #expect(snapshot.usedFraction == 0.4)
         #expect(snapshot.compressedFraction == 0.125)
-        #expect(snapshot.swapUsedFraction == 0.25)
+        #expect(snapshot.swapUsedFraction == 0.125)
     }
 
     @Test func doesNotUnderflowWhenPurgeableExceedsInternal() {
@@ -44,9 +44,11 @@ private func makeCounters(
         #expect(MemorySnapshot(timestamp: Date(), counters: counters).appBytes == 0)
     }
 
-    @Test func treatsMissingSwapAsZero() {
-        let counters = makeCounters(swapTotalBytes: 0)
-        #expect(MemorySnapshot(timestamp: Date(), counters: counters).swapUsedFraction == 0)
+    @Test func swapFractionIgnoresChangesInSwapCapacity() {
+        let date = Date()
+        let smaller = MemorySnapshot(timestamp: date, counters: makeCounters(swapTotalBytes: 3_000))
+        let larger = MemorySnapshot(timestamp: date, counters: makeCounters(swapTotalBytes: 4_000))
+        #expect(smaller.swapUsedFraction == larger.swapUsedFraction)
     }
 
     @Test func calculatesPageoutRate() {

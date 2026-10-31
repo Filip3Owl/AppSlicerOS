@@ -12,12 +12,12 @@ let package = Package(
     targets: [
         .target(name: "AppSlicerML"),
         .target(name: "AppSlicerMetrics"),
-        .executableTarget(name: "AppSlicerCollector", dependencies: ["AppSlicerMetrics"]),
+        .executableTarget(name: "AppSlicerCollector", dependencies: ["AppSlicerML", "AppSlicerMetrics"]),
         .testTarget(name: "AppSlicerMLTests", dependencies: ["AppSlicerML"]),
         .testTarget(name: "AppSlicerMetricsTests", dependencies: ["AppSlicerMetrics"]),
         .testTarget(
             name: "AppSlicerCollectorTests",
-            dependencies: ["AppSlicerCollector", "AppSlicerMetrics"]
+            dependencies: ["AppSlicerCollector", "AppSlicerML", "AppSlicerMetrics"]
         ),
     ]
 )

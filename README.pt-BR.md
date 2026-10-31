@@ -18,8 +18,8 @@
 
 > [!WARNING]
 > O AppSlicerOS está no início do desenvolvimento. Hoje, o projeto contém a biblioteca
-> de machine learning e um coletor de métricas no terminal. Ainda não existe um
-> aplicativo para instalar.
+> de machine learning e um coletor no terminal que a alimenta com leituras reais. Ainda
+> não existe um aplicativo para instalar.
 
 ## Índice
 
@@ -56,7 +56,7 @@ e moderna, com dashboard em tempo real, tornará tudo isso visível e fácil de 
 ## Arquitetura
 
 O diagrama mostra o sistema planejado. Por enquanto, apenas o coletor de métricas e o
-modelo de previsão estão implementados, e eles ainda não estão conectados.
+modelo de previsão estão implementados.
 
 ```mermaid
 flowchart LR
@@ -100,8 +100,8 @@ swift build
 
 ### Como executar o coletor
 
-O coletor mostra as métricas de memória em tempo real no terminal, sem guardar nem
-enviar nada:
+O coletor mostra as métricas de memória e as previsões em tempo real no terminal,
+enquanto o modelo aprende com cada leitura:
 
 ```sh
 swift run appslicer-collector --interval 2 --top 5
@@ -113,6 +113,7 @@ swift run appslicer-collector --interval 2 --top 5
            app 1.82 GB, wired 2.03 GB, compressed 1.94 GB
            cached 1.53 GB, free 0.77 GB
   swap:    2.79 GB used of 4.00 GB, pageouts -
+  forecast: learning (0/20 elevated pressure examples, 0/20 calm examples)
   top processes:
     0.79 GB  Google Chrome Helper (Renderer) (3141)
 ```
@@ -120,6 +121,14 @@ swift run appslicer-collector --interval 2 --top 5
 Pressione `Ctrl-C` para parar ou rode `swift run appslicer-collector --help` para ver
 todas as opções. Sem root, o coletor não consegue ler processos de outros usuários,
 como muitos serviços do sistema.
+
+O modelo precisa de exemplos reais para prever: cada leitura só vira exemplo depois do
+horizonte de 10 minutos, e ele precisa ver tanto momentos calmos quanto de pressão
+elevada. Em um Mac que raramente chega à pressão elevada, isso pode levar muito tempo.
+
+O modelo é salvo a cada 5 minutos e ao encerrar, e restaurado na execução seguinte. O
+arquivo contém apenas valores do modelo e métricas recentes do sistema, sem nomes de
+apps, e nada é enviado para fora.
 
 ### Testes
 
@@ -213,6 +222,7 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 
 - [x] Ler pressão, compressão, swap e paginação do sistema
 - [x] Medir o consumo de memória por processo
+- [x] Ensinar o modelo com leituras reais
 - [ ] Agrupar processos auxiliares em seus apps
 - [ ] Guardar o histórico localmente em SQLite
 - [ ] Definir uma política de retenção dos dados
