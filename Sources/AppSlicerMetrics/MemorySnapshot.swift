@@ -81,8 +81,10 @@ public struct MemorySnapshot: Equatable, Sendable {
         fraction(compressedBytes, of: counters.physicalMemoryBytes)
     }
 
+    /// Relative to physical memory because macOS resizes the swap capacity as it runs,
+    /// which would change a capacity-based fraction without any change in swap usage.
     public var swapUsedFraction: Double {
-        fraction(counters.swapUsedBytes, of: counters.swapTotalBytes)
+        fraction(counters.swapUsedBytes, of: counters.physicalMemoryBytes)
     }
 
     /// Returns `nil` when no time has passed. A counter that went backward counts as zero.

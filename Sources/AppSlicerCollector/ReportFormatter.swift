@@ -8,6 +8,7 @@ enum ReportFormatter {
         time: String,
         snapshot: MemorySnapshot,
         pageoutsPerSecond: Double?,
+        forecast: ForecastStatus,
         report: ProcessMemoryReport?
     ) -> String {
         let counters = snapshot.counters
@@ -21,6 +22,7 @@ enum ReportFormatter {
             "           cached \(gigabytes(snapshot.cachedBytes)), free \(gigabytes(snapshot.freeBytes))",
             "  swap:    \(gigabytes(counters.swapUsedBytes)) used of \(gigabytes(counters.swapTotalBytes))"
                 + ", pageouts \(rate)",
+            "  forecast: \(describe(forecast))",
         ]
 
         if let report {
@@ -35,6 +37,17 @@ enum ReportFormatter {
             }
         }
         return lines.joined(separator: "\n")
+    }
+
+    private static func describe(_ forecast: ForecastStatus) -> String {
+        switch forecast {
+        case .learning(let elevated, let calm, let required):
+            "learning (\(min(elevated, required))/\(required) elevated pressure examples,"
+                + " \(min(calm, required))/\(required) calm examples)"
+        case .ready(let probability, let horizon):
+            "\(percent(probability)) chance of elevated pressure in the next"
+                + " \(Int((horizon / 60).rounded())) min"
+        }
     }
 
     private static func name(of level: MemoryPressureLevel) -> String {
