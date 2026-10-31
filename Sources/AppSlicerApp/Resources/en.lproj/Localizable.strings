@@ -1,0 +1,66 @@
+"nav.overview" = "Overview";
+"nav.apps" = "Apps";
+"nav.forecast" = "Forecast";
+"nav.settings" = "Settings";
+
+"status.calm.label" = "All normal";
+"status.calm.title" = "Your Mac is doing fine.";
+"status.calm.detail" = "Memory is under control, and nothing points to a slowdown in the next few minutes.";
+"status.learning.label" = "Learning";
+"status.learning.detail" = "These metrics are real. Forecasts will appear once AppSlicerOS knows your usage better.";
+"status.attention.label" = "Attention";
+"status.soon.title" = "Memory may get tight soon.";
+"status.soon.detail" = "A slowdown is likely in the next 10 minutes.";
+"status.now.title" = "Memory is tight right now.";
+"status.now.detail" = "macOS reports elevated memory pressure, so apps may respond more slowly.";
+
+"tile.memory" = "Memory used";
+"tile.memory.of" = "of %@";
+"tile.swap" = "Swap";
+"tile.swap.growing" = "growing";
+"tile.swap.steady" = "not growing";
+"tile.pressure" = "System pressure";
+"tile.pressure.detail" = "reported by macOS";
+"pressure.normal" = "Normal";
+"pressure.elevated" = "Elevated";
+
+"chart.title" = "Memory used in the last hour";
+"chart.summary" = "Now %1$@, with a peak of %2$@ in the last hour.";
+"chart.empty" = "No history yet. The chart appears once collection has data.";
+"chart.axis.time" = "Time";
+"chart.axis.used" = "Memory used";
+
+"collection.notice.title" = "History is not being updated";
+"collection.active" = "Running. Each reading is added to the history on this Mac.";
+"collection.stopped" = "The background collection has stopped, so the history and the model are not being updated.";
+"collection.never" = "The background collection has not started yet, so there is no history to show.";
+
+"apps.detail" = "Apps using the most memory, with their helper processes combined.";
+"apps.processes" = "%d processes";
+"apps.unreadable" = "%d system processes cannot be read without administrator access and are not listed.";
+
+"forecast.page.detail" = "What the model expects for the next 10 minutes, calculated on this Mac only.";
+"forecast.unavailable.title" = "Forecast unavailable";
+"forecast.unavailable.detail" = "The model could not be read. The metrics in the rest of the app are not affected.";
+"forecast.learning.title" = "Still learning from your usage";
+"forecast.learning.detail" = "There are not enough examples for a reliable forecast yet.";
+"forecast.high.title" = "A slowdown is likely";
+"forecast.low.title" = "A slowdown is unlikely";
+"forecast.ready.detail" = "The model estimates a %@ chance of elevated memory pressure in the next 10 minutes.";
+"forecast.progress.title" = "Model learning";
+"forecast.progress.detail" = "To forecast, it needs to observe both calm moments and tight memory on your Mac.";
+"forecast.progress.calm" = "Calm moments";
+"forecast.progress.elevated" = "Tight memory";
+"forecast.progress.count" = "%1$d of %2$d";
+
+"settings.collection.title" = "Background collection";
+"settings.privacy.title" = "Privacy";
+"settings.privacy.detail" = "Your history and the model stay on this Mac. Nothing is sent anywhere.";
+"settings.privacy.show" = "Show in Finder";
+
+"menu.open" = "Open AppSlicerOS";
+"menu.quit" = "Quit";
+
+"loading" = "Reading memory metrics…";
+"error.title" = "Could not read memory metrics";
+"error.detail" = "AppSlicerOS will keep trying. If this continues, restart the app.";
