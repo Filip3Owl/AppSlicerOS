@@ -39,14 +39,16 @@ controle. Por isso, o AppSlicerOS não promete "limpar" a RAM, prática que cost
 descartar cache útil e deixar o Mac mais lento.
 
 O objetivo é outro: aprender como cada Mac é usado, prever momentos de pressão de
-memória e ajudar o usuário a agir antes que o sistema fique lento. Tudo isso será
-acompanhado por um dashboard em tempo real.
+memória e ajudar o usuário a agir antes que o sistema fique lento. Uma interface limpa
+e moderna, com dashboard em tempo real, tornará tudo isso visível e fácil de controlar.
 
 ## Princípios
 
 - **Processamento local:** os dados de uso e o treinamento ficam no próprio Mac.
 - **Leveza:** a meta é consumir menos de 100 MB de RAM e menos de 2% de CPU em média.
 - **Controle do usuário:** nenhum app será fechado sem autorização.
+- **Interface limpa e intuitiva:** design nativo e moderno, com linguagem simples,
+  explicações claras e acessibilidade desde o início.
 - **Resultados mensuráveis:** o sucesso é medido por menos tempo sob pressão e menos
   crescimento do swap, não pela quantidade de memória livre.
 
@@ -185,12 +187,16 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 - [ ] Guardar o histórico localmente em SQLite
 - [ ] Definir uma política de retenção dos dados
 
-### Fase 3: dashboard em tempo real
+### Fase 3: interface do app e dashboard em tempo real
 
-- [ ] Criar o app de barra de menus em SwiftUI
+- [ ] Prototipar e validar a interface
+- [ ] Criar a janela principal com barra lateral em SwiftUI
+- [ ] Adicionar um item na barra de menus para consulta rápida e ações comuns
 - [ ] Exibir gráficos em tempo real com Swift Charts
 - [ ] Listar os apps que mais consomem memória
-- [ ] Mostrar a previsão do modelo e o estado do aprendizado
+- [ ] Mostrar a previsão do modelo e o estado do aprendizado em linguagem simples
+- [ ] Oferecer temas claro e escuro, VoiceOver e navegação por teclado
+- [ ] Traduzir a interface para inglês e português do Brasil
 
 ### Fase 4: validação com dados reais
 
