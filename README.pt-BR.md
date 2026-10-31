@@ -18,8 +18,9 @@
 
 > [!WARNING]
 > O AppSlicerOS está no início do desenvolvimento. Hoje, o projeto contém a biblioteca
-> de machine learning e um coletor no terminal que a alimenta com leituras reais. Ainda
-> não existe um aplicativo para instalar.
+> de machine learning, um coletor no terminal que a alimenta com leituras reais e uma
+> primeira versão da interface. Ainda não há um app para instalar, então ele roda a
+> partir do código-fonte.
 
 ## Índice
 
@@ -55,8 +56,8 @@ e moderna, com dashboard em tempo real, tornará tudo isso visível e fácil de 
 
 ## Arquitetura
 
-O diagrama mostra o sistema planejado. Por enquanto, apenas o coletor de métricas e o
-modelo de previsão estão implementados.
+O diagrama mostra o sistema planejado. Por enquanto, o coletor de métricas, o modelo de
+previsão e o dashboard estão implementados.
 
 ```mermaid
 flowchart LR
@@ -97,6 +98,21 @@ Até agora, o projeto foi compilado e testado apenas em um Mac Intel com macOS 1
 git clone https://github.com/Filip3Owl/AppSlicerOS.git
 cd AppSlicerOS
 swift build
+```
+
+### Como executar o app
+
+```sh
+swift run appslicer-app
+```
+
+O app abre uma janela e adiciona um item à barra de menus. Ele lê as métricas ao vivo
+apenas enquanto uma janela ou o painel da barra de menus estiver à vista, e mostra o
+histórico e as previsões salvos pelo coletor. Ele segue o idioma do sistema, e você pode
+experimentar o português com:
+
+```sh
+swift run appslicer-app -AppleLanguages '(pt-BR)'
 ```
 
 ### Como executar o coletor
@@ -211,6 +227,7 @@ AppSlicerOS/
 ├── README.md                  # Documentação em inglês
 ├── README.pt-BR.md            # Documentação em português do Brasil
 ├── Sources/
+│   ├── AppSlicerApp/          # Interface em SwiftUI
 │   ├── AppSlicerCollector/    # Coletor de métricas no terminal
 │   ├── AppSlicerHistory/      # Histórico local em SQLite
 │   ├── AppSlicerML/           # Algoritmos de machine learning
@@ -238,20 +255,22 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 - [x] Ler pressão, compressão, swap e paginação do sistema
 - [x] Medir o consumo de memória por processo
 - [x] Ensinar o modelo com leituras reais
-- [ ] Agrupar processos auxiliares em seus apps
+- [x] Agrupar processos auxiliares em seus apps
 - [x] Guardar o histórico localmente em SQLite
 - [x] Definir uma política de retenção dos dados
 
 ### Fase 3: interface do app e dashboard em tempo real
 
-- [ ] Prototipar e validar a interface
-- [ ] Criar a janela principal com barra lateral em SwiftUI
-- [ ] Adicionar um item na barra de menus para consulta rápida e ações comuns
-- [ ] Exibir gráficos em tempo real com Swift Charts
-- [ ] Listar os apps que mais consomem memória
-- [ ] Mostrar a previsão do modelo e o estado do aprendizado em linguagem simples
-- [ ] Oferecer temas claro e escuro, VoiceOver e navegação por teclado
-- [ ] Traduzir a interface para inglês e português do Brasil
+- [x] Prototipar e validar a interface
+- [x] Criar a janela principal com barra lateral em SwiftUI
+- [x] Adicionar um item na barra de menus para consulta rápida e ações comuns
+- [x] Exibir gráficos em tempo real com Swift Charts
+- [x] Listar os apps que mais consomem memória
+- [x] Mostrar a previsão do modelo e o estado do aprendizado em linguagem simples
+- [x] Oferecer temas claro e escuro
+- [x] Traduzir a interface para inglês e português do Brasil
+- [ ] Verificar o VoiceOver e a navegação por teclado
+- [ ] Medir a interface em relação às metas de RAM e CPU em uso prolongado
 
 ### Fase 4: validação com dados reais
 
