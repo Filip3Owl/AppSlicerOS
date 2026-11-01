@@ -108,7 +108,8 @@ swift run appslicer-app
 The app opens a window and adds an item to the menu bar. It reads live metrics only while
 a window or the menu bar panel is visible, so readings pause when the window is closed,
 minimized, or fully covered. It shows the history and forecasts saved by the collector.
-Press `Command-1` to `Command-4` to switch pages. The app follows your system language,
+The History page shows memory composition and swap over 1 hour, 24 hours, 7 days, or 90
+days. Press `Command-1` to `Command-5` to switch pages. The app follows your system language,
 and you can try Portuguese with:
 
 ```sh
@@ -268,6 +269,9 @@ This is an initial roadmap and may change as the project produces real data.
 - [x] Show the model's forecast and learning status in plain language
 - [x] Support light and dark mode
 - [x] Localize the interface in English and Brazilian Portuguese
+- [x] Show memory composition and swap over 1 hour, 24 hours, 7 days, and 90 days
+- [ ] Show per-app consumption over time
+- [ ] Mark pressure events, data gaps, and forecast versus outcome on the charts
 - [ ] Verify VoiceOver and keyboard navigation
 - [x] Measure the interface against the RAM and CPU targets in prolonged use
 
