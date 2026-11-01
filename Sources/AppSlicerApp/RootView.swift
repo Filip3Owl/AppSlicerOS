@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
     case overview
+    case history
     case apps
     case forecast
     case settings
@@ -11,6 +12,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .overview: L("nav.overview")
+        case .history: L("nav.history")
         case .apps: L("nav.apps")
         case .forecast: L("nav.forecast")
         case .settings: L("nav.settings")
@@ -25,6 +27,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .overview: "waveform.path.ecg"
+        case .history: "clock.arrow.circlepath"
         case .apps: "square.grid.2x2"
         case .forecast: "chart.line.uptrend.xyaxis"
         case .settings: "slider.horizontal.3"
@@ -61,6 +64,7 @@ struct RootView: View {
                 Group {
                     switch model.section {
                     case .overview: OverviewView()
+                    case .history: HistoryView()
                     case .apps: AppsView()
                     case .forecast: ForecastView()
                     case .settings: SettingsView()

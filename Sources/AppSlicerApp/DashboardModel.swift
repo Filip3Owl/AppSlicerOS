@@ -17,7 +17,11 @@ final class DashboardModel: ObservableObject {
     @Published private(set) var snapshot: MemorySnapshot?
     @Published private(set) var isSwapGrowing = false
     @Published private(set) var forecast = ForecastState.unavailable
-    @Published var section = AppSection.overview
+    @Published var section = AppSection.overview {
+        didSet {
+            if section == .history { refreshBucketsIfDue(now: Date()) }
+        }
+    }
     @Published private(set) var apps: [AppMemory] = []
     @Published private(set) var otherFootprintBytes: UInt64 = 0
     @Published private(set) var otherProcessCount = 0
@@ -25,6 +29,18 @@ final class DashboardModel: ObservableObject {
     @Published private(set) var chartPoints: [ChartPoint] = []
     @Published private(set) var collection = CollectionState.neverStarted
     @Published private(set) var loadFailed = false
+    @Published var historyPeriod = HistoryPeriod.hour {
+        didSet {
+            if historyPeriod != oldValue {
+                historyBuckets = nil
+                lastBucketsRead = .distantPast
+                refreshBucketsIfDue(now: Date())
+            }
+        }
+    }
+    /// `nil` while the selected period is loading.
+    @Published private(set) var historyBuckets: [HistoryBucket]?
+    @Published private(set) var historyFailed = false
 
     let dataFolder: URL?
 
@@ -39,13 +55,18 @@ final class DashboardModel: ObservableObject {
     private var lastAppsRead = Date.distantPast
     private var lastHistoryRead = Date.distantPast
     private var lastForecastModelRead = Date.distantPast
+    private var lastBucketsRead = Date.distantPast
+    private let historyQueries: HistoryQueryService?
 
-    init() {
+    /// - Parameter dataFiles: The model and history to read. Tests must pass their own,
+    ///   because opening a history can migrate it.
+    init(dataFiles: (model: URL?, history: URL?)? = nil) {
         systemReader = try? SystemMemoryReader()
-        let modelFile = try? ForecasterStore.defaultFileURL()
-        let historyFile = try? HistoryStore.defaultFileURL()
+        let modelFile = dataFiles?.model ?? (dataFiles == nil ? try? ForecasterStore.defaultFileURL() : nil)
+        let historyFile = dataFiles?.history ?? (dataFiles == nil ? try? HistoryStore.defaultFileURL() : nil)
         forecasterStore = modelFile.map(ForecasterStore.init(fileURL:))
         historyStore = historyFile.flatMap { try? HistoryStore(fileURL: $0) }
+        historyQueries = historyFile.map(HistoryQueryService.init(fileURL:))
         dataFolder = historyFile?.deletingLastPathComponent()
         loadFailed = systemReader == nil
     }
@@ -78,6 +99,23 @@ final class DashboardModel: ObservableObject {
         refreshMetrics()
         refreshAppsIfDue(now: now)
         refreshHistoryIfDue(now: now)
+        refreshBucketsIfDue(now: now)
+    }
+
+    /// Long periods can scan many rows, so they run away from the main thread and only while
+    /// the History page is open.
+    private func refreshBucketsIfDue(now: Date) {
+        guard section == .history, visibleSurfaces > 0, let historyQueries,
+              now.timeIntervalSince(lastBucketsRead) >= historyPeriod.refreshInterval
+        else { return }
+        lastBucketsRead = now
+        let period = historyPeriod
+        Task { [weak self] in
+            let buckets = try? await historyQueries.buckets(period: period, now: now)
+            guard let self, self.historyPeriod == period else { return }
+            self.historyFailed = buckets == nil
+            self.historyBuckets = buckets ?? []
+        }
     }
 
     private func refreshMetrics() {

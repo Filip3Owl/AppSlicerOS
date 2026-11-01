@@ -3,6 +3,27 @@
 "nav.forecast" = "Forecast";
 "nav.settings" = "Settings";
 
+"nav.history" = "History";
+"history.detail" = "See how your Mac has used memory over time. Periods with no data appear empty, usually because the Mac was asleep.";
+"history.period" = "Period";
+"history.period.hour" = "1 hour";
+"history.period.day" = "24 hours";
+"history.period.week" = "7 days";
+"history.period.quarter" = "90 days";
+"history.composition.title" = "Memory composition";
+"history.composition.summary" = "Average of %1$@ used, with a peak of %2$@ in this period.";
+"history.composition.empty" = "This period has no composition data.";
+"history.swap.title" = "Swap used";
+"history.swap.summary" = "Average of %1$@, with a peak of %2$@ in this period.";
+"history.category.app" = "App";
+"history.category.wired" = "Wired";
+"history.category.compressed" = "Compressed";
+"history.category.cached" = "Cached";
+"history.category.free" = "Free";
+"history.empty" = "No readings in this period yet.";
+"history.failed" = "The history could not be read. The live metrics in the rest of the app are not affected.";
+"history.loading" = "Loading the history…";
+
 "status.calm.label" = "All normal";
 "status.calm.title" = "Your Mac is doing fine.";
 "status.calm.detail" = "Memory is under control, and nothing points to a slowdown in the next few minutes.";

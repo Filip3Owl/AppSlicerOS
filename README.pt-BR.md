@@ -109,8 +109,8 @@ swift run appslicer-app
 O app abre uma janela e adiciona um item à barra de menus. Ele lê as métricas ao vivo
 apenas enquanto uma janela ou o painel da barra de menus estiver visível, então as
 leituras pausam com a janela fechada, minimizada ou totalmente coberta. Ele mostra o
-histórico e as previsões salvos pelo coletor. Use `Command-1` a `Command-4` para trocar de
-página. O app segue o idioma do sistema, e você pode experimentar o português com:
+histórico e as previsões salvos pelo coletor. A página Histórico mostra a composição da memória e o swap em 1 hora, 24 horas, 7 dias ou
+90 dias. Use `Command-1` a `Command-5` para trocar de página. O app segue o idioma do sistema, e você pode experimentar o português com:
 
 ```sh
 swift run appslicer-app -AppleLanguages '(pt-BR)'
@@ -270,6 +270,9 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 - [x] Mostrar a previsão do modelo e o estado do aprendizado em linguagem simples
 - [x] Oferecer temas claro e escuro
 - [x] Traduzir a interface para inglês e português do Brasil
+- [x] Mostrar a composição da memória e o swap em 1 hora, 24 horas, 7 dias e 90 dias
+- [ ] Mostrar o consumo por app ao longo do tempo
+- [ ] Marcar eventos de pressão, intervalos sem dados e previsão comparada ao resultado
 - [ ] Verificar o VoiceOver e a navegação por teclado
 - [x] Medir a interface em relação às metas de RAM e CPU em uso prolongado
 
