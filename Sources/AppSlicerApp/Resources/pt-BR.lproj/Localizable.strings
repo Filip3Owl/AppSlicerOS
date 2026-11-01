@@ -35,7 +35,9 @@
 "collection.stopped" = "A coleta em segundo plano parou, então o histórico e o modelo não estão sendo atualizados.";
 "collection.never" = "A coleta em segundo plano ainda não começou, então não há histórico para mostrar.";
 
-"apps.detail" = "Os apps que mais usam memória, com seus processos auxiliares somados.";
+"apps.detail" = "Os apps abertos que mais usam memória, com seus processos auxiliares somados.";
+"apps.other.title" = "Serviços e ferramentas em segundo plano";
+"apps.other.detail" = "%d processos que não pertencem aos apps acima.";
 "apps.processes" = "%d processos";
 "apps.unreadable" = "%d processos do sistema não podem ser lidos sem acesso de administrador e não estão na lista.";
 

@@ -93,12 +93,33 @@ private func makeCounters(
 @Suite struct AppGroupingTests {
     @Test func usesTheOutermostAppBundle() {
         let helper = "/Applications/Google Chrome.app/Contents/Frameworks/Helper (Renderer).app/Contents/MacOS/Helper"
-        #expect(ProcessMemoryReader.appName(forExecutablePath: helper, fallback: "Helper") == "Google Chrome")
+        #expect(ProcessMemoryReader.appName(forExecutablePath: helper) == "Google Chrome")
     }
 
-    @Test func keepsTheProcessNameOutsideABundle() {
-        #expect(ProcessMemoryReader.appName(forExecutablePath: "/usr/bin/ssh", fallback: "ssh") == "ssh")
-        #expect(ProcessMemoryReader.appName(forExecutablePath: nil, fallback: "kernel") == "kernel")
+    @Test(arguments: [
+        ("/Applications/Slack.app/Contents/MacOS/Slack", "Slack"),
+        ("/Applications/Utilities/Tool.app/Contents/MacOS/Tool", "Tool"),
+        ("/System/Applications/Mail.app/Contents/MacOS/Mail", "Mail"),
+        ("/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", "Terminal"),
+        ("/Users/someone/Applications/Mine.app/Contents/MacOS/Mine", "Mine"),
+    ])
+    func recognizesAppsInStandardFolders(path: String, name: String) {
+        #expect(ProcessMemoryReader.appName(forExecutablePath: path) == name)
+    }
+
+    @Test(arguments: [
+        "/usr/bin/ssh",
+        "/Users/someone/.local/share/tool/versions/2.1.316",
+        "/System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight",
+        "/Library/Apple/System/Library/CoreServices/XProtect.app/Contents/MacOS/XProtect",
+        "/System/Library/Frameworks/Metal.framework/XPCServices/MTLCompilerService.xpc/MTLCompilerService",
+    ])
+    func treatsServicesAndToolsAsNotApps(path: String) {
+        #expect(ProcessMemoryReader.appName(forExecutablePath: path) == nil)
+    }
+
+    @Test func treatsAnUnknownPathAsNotAnApp() {
+        #expect(ProcessMemoryReader.appName(forExecutablePath: nil) == nil)
     }
 
     @Test func combinesProcessesAndSortsByFootprint() {
@@ -131,9 +152,12 @@ private func makeCounters(
     }
 
     @Test func readsAppsSortedByFootprint() throws {
-        let apps = try ProcessMemoryReader().readApps(limit: Int.max).apps
-        #expect(!apps.isEmpty)
+        let report = try ProcessMemoryReader().readApps(limit: Int.max)
+        let apps = report.apps
         #expect(apps.map(\.footprintBytes) == apps.map(\.footprintBytes).sorted(by: >))
+        // The test process itself is a tool, so it counts toward the other processes.
+        #expect(report.otherProcessCount > 0)
+        #expect(report.otherFootprintBytes > 0)
     }
 
     @Test func findsTheCurrentProcess() throws {

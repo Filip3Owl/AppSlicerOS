@@ -17,6 +17,11 @@ enum AppSection: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The Command-number shortcut that opens this page.
+    var shortcut: KeyEquivalent {
+        KeyEquivalent(Character(String((Self.allCases.firstIndex(of: self) ?? 0) + 1)))
+    }
+
     var symbol: String {
         switch self {
         case .overview: "waveform.path.ecg"
@@ -29,11 +34,18 @@ enum AppSection: String, CaseIterable, Identifiable {
 
 struct RootView: View {
     @EnvironmentObject private var model: DashboardModel
-    @State private var selection: AppSection? = .overview
+
+    private var selection: Binding<AppSection?> {
+        Binding(
+            get: { model.section },
+            // The list clears its selection when clicked outside a row. Keep the page.
+            set: { if let section = $0 { model.section = section } }
+        )
+    }
 
     var body: some View {
         NavigationSplitView {
-            List(AppSection.allCases, selection: $selection) { section in
+            List(AppSection.allCases, selection: selection) { section in
                 Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
@@ -47,7 +59,7 @@ struct RootView: View {
         } detail: {
             ScrollView {
                 Group {
-                    switch selection ?? .overview {
+                    switch model.section {
                     case .overview: OverviewView()
                     case .apps: AppsView()
                     case .forecast: ForecastView()
@@ -61,7 +73,6 @@ struct RootView: View {
             .background(Color(nsColor: .textBackgroundColor))
         }
         .frame(minWidth: 820, minHeight: 560)
-        .onAppear(perform: model.surfaceAppeared)
-        .onDisappear(perform: model.surfaceDisappeared)
+        .pausesUpdatesWhenHidden(model)
     }
 }

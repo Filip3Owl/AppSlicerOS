@@ -4,7 +4,7 @@ import AppSlicerMetrics
 import Foundation
 
 /// Feeds the interface with live readings. It only reads while a window or the menu bar
-/// panel is showing, and it never writes the model or the history, which the collector owns.
+/// panel is visible, and it never writes the model or the history, which the collector owns.
 @MainActor
 final class DashboardModel: ObservableObject {
     private enum Interval {
@@ -17,7 +17,10 @@ final class DashboardModel: ObservableObject {
     @Published private(set) var snapshot: MemorySnapshot?
     @Published private(set) var isSwapGrowing = false
     @Published private(set) var forecast = ForecastState.unavailable
+    @Published var section = AppSection.overview
     @Published private(set) var apps: [AppMemory] = []
+    @Published private(set) var otherFootprintBytes: UInt64 = 0
+    @Published private(set) var otherProcessCount = 0
     @Published private(set) var unreadableProcessCount = 0
     @Published private(set) var chartPoints: [ChartPoint] = []
     @Published private(set) var collection = CollectionState.neverStarted
@@ -127,8 +130,10 @@ final class DashboardModel: ObservableObject {
     private func refreshAppsIfDue(now: Date) {
         guard now.timeIntervalSince(lastAppsRead) >= Interval.apps else { return }
         lastAppsRead = now
-        guard let report = try? processReader.readApps(limit: 12) else { return }
+        guard let report = try? processReader.readApps(limit: 30) else { return }
         apps = report.apps
+        otherFootprintBytes = report.otherFootprintBytes
+        otherProcessCount = report.otherProcessCount
         unreadableProcessCount = report.unreadableCount
     }
 

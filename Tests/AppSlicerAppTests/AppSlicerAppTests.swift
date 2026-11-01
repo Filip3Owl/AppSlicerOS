@@ -54,6 +54,14 @@ import Testing
         ])
     }
 
+    @Test func startsANewSegmentAfterAGapInTheData() {
+        let readings: [(date: Date, usedBytes: UInt64)] = [0.0, 60, 240, 600, 660].map {
+            (Date(timeIntervalSince1970: $0), 1)
+        }
+        // Gaps of 180 seconds stay joined. Longer ones break the line.
+        #expect(ChartPoint.byMinute(readings).map(\.segment) == [0, 0, 0, 1, 1])
+    }
+
     @Test func handlesNoReadings() {
         #expect(ChartPoint.byMinute([]).isEmpty)
     }
@@ -66,6 +74,52 @@ import Testing
         #expect(Formatting.gigabytes(1_610_612_736, locale: brazil) == "1,50 GB")
         #expect(Formatting.gigabytes(1_610_612_736, locale: us) == "1.50 GB")
         #expect(Formatting.percent(0.73, locale: us) == "73%")
+    }
+
+    @Test func showsSmallAmountsInMegabytes() {
+        let us = Locale(identifier: "en_US")
+        #expect(Formatting.compactSize(52_428_800, locale: us) == "50 MB")
+        #expect(Formatting.compactSize(1_073_741_823, locale: us) == "1,024 MB")
+        #expect(Formatting.compactSize(1_073_741_824, locale: us) == "1.00 GB")
+    }
+}
+
+@MainActor
+@Suite struct DashboardUpdateTests {
+    @Test func readsOnlyWhileASurfaceIsVisible() async throws {
+        let model = DashboardModel()
+        #expect(model.snapshot == nil)
+
+        model.surfaceAppeared()
+        model.surfaceAppeared()
+        try await Task.sleep(for: .milliseconds(300))
+        let first = try #require(model.snapshot)
+
+        // One surface is still visible, so readings continue.
+        model.surfaceDisappeared()
+        try await Task.sleep(for: .seconds(3))
+        let second = try #require(model.snapshot)
+        #expect(second.timestamp > first.timestamp)
+
+        // No surface is visible, so readings stop.
+        model.surfaceDisappeared()
+        try await Task.sleep(for: .seconds(3))
+        #expect(model.snapshot?.timestamp == second.timestamp)
+    }
+
+    @Test func extraHideEventsDoNotBreakTheCount() async throws {
+        let model = DashboardModel()
+        model.surfaceDisappeared()
+        model.surfaceAppeared()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(model.snapshot != nil)
+        model.surfaceDisappeared()
+    }
+}
+
+@Suite struct AppSectionTests {
+    @Test func shortcutsFollowThePageOrder() {
+        #expect(AppSection.allCases.map(\.shortcut.character) == ["1", "2", "3", "4"])
     }
 }
 

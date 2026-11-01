@@ -56,14 +56,19 @@ enum CollectionState: Equatable {
 struct ChartPoint: Identifiable, Equatable {
     let date: Date
     let usedGigabytes: Double
+    /// Points in different segments are not joined, so the line never suggests data for a
+    /// period with no readings, such as while the Mac was asleep.
+    var segment = 0
     var id: Date { date }
+
+    private static let maximumGapInSegment: TimeInterval = 180
 
     /// Averages readings by minute, which keeps the chart light and the line readable.
     static func byMinute(_ readings: [(date: Date, usedBytes: UInt64)]) -> [ChartPoint] {
         let groups = Dictionary(grouping: readings) { reading in
             (reading.date.timeIntervalSince1970 / 60).rounded(.down)
         }
-        return groups
+        var points = groups
             .map { minute, readings in
                 let total = readings.reduce(0.0) { $0 + Double($1.usedBytes) }
                 return ChartPoint(
@@ -72,6 +77,12 @@ struct ChartPoint: Identifiable, Equatable {
                 )
             }
             .sorted { $0.date < $1.date }
+
+        for index in points.indices.dropFirst() {
+            let gap = points[index].date.timeIntervalSince(points[index - 1].date)
+            points[index].segment = points[index - 1].segment + (gap > maximumGapInSegment ? 1 : 0)
+        }
+        return points
     }
 }
 
@@ -85,6 +96,13 @@ enum Formatting {
 
     static func gigabytes(value: Double, locale: Locale = .current) -> String {
         value.formatted(.number.precision(.fractionLength(2)).locale(locale)) + " GB"
+    }
+
+    /// Shows amounts under 1 GB in megabytes, so small apps do not read as "0.00 GB".
+    static func compactSize(_ bytes: UInt64, locale: Locale = .current) -> String {
+        guard Double(bytes) < bytesPerGigabyte else { return gigabytes(bytes, locale: locale) }
+        let megabytes = Double(bytes) / 1_048_576
+        return megabytes.formatted(.number.precision(.fractionLength(0)).locale(locale)) + " MB"
     }
 
     static func percent(_ fraction: Double, locale: Locale = .current) -> String {

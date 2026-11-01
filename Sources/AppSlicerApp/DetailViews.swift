@@ -8,15 +8,30 @@ struct AppsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PageTitle(title: L("nav.apps"), detail: L("apps.detail"))
-            if model.apps.isEmpty {
+            if model.apps.isEmpty && model.otherProcessCount == 0 {
                 LoadingOrFailure(failed: false)
-            } else {
+            } else if !model.apps.isEmpty {
                 Card(padding: 8) {
                     VStack(spacing: 0) {
                         ForEach(model.apps, id: \.name) { app in
                             AppRow(app: app, largest: model.apps.first?.footprintBytes ?? 1)
                         }
                     }
+                }
+            }
+            if model.otherProcessCount > 0 {
+                Card {
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L("apps.other.title")).font(.system(size: 14, weight: .semibold))
+                            Text(L("apps.other.detail", model.otherProcessCount))
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(Formatting.gigabytes(model.otherFootprintBytes)).monospacedDigit()
+                    }
+                    .accessibilityElement(children: .combine)
                 }
             }
             if model.unreadableProcessCount > 0 {
@@ -49,7 +64,7 @@ private struct AppRow: View {
                 .frame(width: 180)
                 .accessibilityHidden(true)
 
-            Text(Formatting.gigabytes(app.footprintBytes))
+            Text(Formatting.compactSize(app.footprintBytes))
                 .monospacedDigit()
                 .frame(width: 72, alignment: .trailing)
         }
@@ -204,7 +219,6 @@ struct MenuBarView: View {
         }
         .padding(16)
         .frame(width: 340)
-        .onAppear(perform: model.surfaceAppeared)
-        .onDisappear(perform: model.surfaceDisappeared)
+        .pausesUpdatesWhenHidden(model)
     }
 }
