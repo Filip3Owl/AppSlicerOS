@@ -1,3 +1,4 @@
+import AppSlicerHistory
 import AppSlicerMetrics
 import Foundation
 import Testing
@@ -86,8 +87,18 @@ import Testing
 
 @MainActor
 @Suite struct DashboardUpdateTests {
+    /// Never the default files, because the real history must not be migrated by a test.
+    private func makeModel() -> DashboardModel {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AppSlicerOSAppTests-\(UUID().uuidString)", isDirectory: true)
+        return DashboardModel(dataFiles: (
+            model: directory.appendingPathComponent("test.model.json"),
+            history: directory.appendingPathComponent("history.sqlite")
+        ))
+    }
+
     @Test func readsOnlyWhileASurfaceIsVisible() async throws {
-        let model = DashboardModel()
+        let model = makeModel()
         #expect(model.snapshot == nil)
 
         model.surfaceAppeared()
@@ -108,18 +119,97 @@ import Testing
     }
 
     @Test func extraHideEventsDoNotBreakTheCount() async throws {
-        let model = DashboardModel()
+        let model = makeModel()
         model.surfaceDisappeared()
         model.surfaceAppeared()
         try await Task.sleep(for: .milliseconds(300))
         #expect(model.snapshot != nil)
         model.surfaceDisappeared()
     }
+
+    @Test func loadsTheSelectedHistoryPeriodOnlyOnTheHistoryPage() async throws {
+        let model = makeModel()
+        model.surfaceAppeared()
+        defer { model.surfaceDisappeared() }
+
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(model.historyBuckets == nil)
+
+        model.section = .history
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(model.historyBuckets == [])
+        #expect(!model.historyFailed)
+
+        // Changing the period clears the old data until the new one arrives.
+        model.historyPeriod = .week
+        #expect(model.historyBuckets == nil)
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(model.historyBuckets == [])
+    }
+}
+
+@Suite struct HistoryPeriodTests {
+    @Test func periodsKeepTheChartsLight() {
+        for period in HistoryPeriod.allCases {
+            #expect(period.span / period.bucketDuration <= 360)
+        }
+    }
+
+    @Test func longerPeriodsReadLessOften() {
+        #expect(HistoryPeriod.hour.refreshInterval < HistoryPeriod.week.refreshInterval)
+    }
+
+    @Test func periodSpansMatchTheRetentionOfTheHistory() {
+        #expect(HistoryPeriod.week.span == RetentionPolicy().readingRetention)
+        #expect(HistoryPeriod.quarter.span == RetentionPolicy().summaryRetention)
+    }
+}
+
+@Suite struct CompositionTests {
+    private func bucket(start: TimeInterval = 600, app: Double? = 10, wired: Double? = 20, cached: Double? = 40, free: Double? = 50) -> HistoryBucket {
+        HistoryBucket(
+            start: Date(timeIntervalSince1970: start),
+            sampleCount: 1,
+            averageUsedBytes: 60,
+            maximumUsedBytes: 60,
+            averageAppBytes: app,
+            averageWiredBytes: wired,
+            averageCompressedBytes: 30,
+            averageCachedBytes: cached,
+            averageFreeBytes: free,
+            averageSwapUsedBytes: 0,
+            maximumSwapUsedBytes: 0,
+            worstPressureLevel: .normal,
+            elevatedSampleCount: 0
+        )
+    }
+
+    @Test func stacksCategoriesInFixedOrderWithoutGaps() {
+        let segments = CompositionSegment.segments(from: [bucket()], bucketDuration: 60)
+        #expect(segments.map(\.category) == MemoryCategory.allCases)
+        #expect(segments.map(\.lowerGigabytes) == [0, 10, 30, 60, 100].map { $0 / Formatting.bytesPerGigabyte })
+        #expect(segments.map(\.upperGigabytes) == [10, 30, 60, 100, 150].map { $0 / Formatting.bytesPerGigabyte })
+        #expect(segments.allSatisfy { $0.end.timeIntervalSince($0.start) == 60 })
+    }
+
+    @Test func omitsPeriodsWithoutComposition() {
+        #expect(CompositionSegment.segments(from: [bucket(app: nil)], bucketDuration: 60).isEmpty)
+        #expect(CompositionSegment.segments(from: [bucket(free: nil)], bucketDuration: 60).isEmpty)
+    }
+
+    @Test func leavesTimeWithoutDataEmpty() {
+        let segments = CompositionSegment.segments(from: [bucket(start: 0), bucket(start: 600)], bucketDuration: 60)
+        #expect(Set(segments.map(\.start.timeIntervalSince1970)) == [0, 600])
+    }
+
+    @Test func eachCategoryHasALabel() {
+        #expect(Set(MemoryCategory.allCases.map(\.label)).count == MemoryCategory.allCases.count)
+    }
 }
 
 @Suite struct AppSectionTests {
     @Test func shortcutsFollowThePageOrder() {
-        #expect(AppSection.allCases.map(\.shortcut.character) == ["1", "2", "3", "4"])
+        #expect(AppSection.allCases.map(\.shortcut.character) == ["1", "2", "3", "4", "5"])
     }
 }
 
@@ -169,7 +259,7 @@ import Testing
             .appendingPathComponent("Sources/AppSlicerApp")
         let files = try #require(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
         // The lookahead skips the "chart.line…" SF Symbol name, which is not a text key.
-        let usage = /"((?:nav|status|tile|pressure|chart(?!\.line)|collection|apps|forecast|settings|menu|error)\.[a-z.]+|loading)"/
+        let usage = /"((?:nav|status|tile|pressure|chart(?!\.line)|collection|apps|forecast|settings|menu|error|history)\.[a-z.]+|loading)"/
         var checked = 0
         for case let file as URL in files where file.pathExtension == "swift" {
             let text = try String(contentsOf: file, encoding: .utf8)

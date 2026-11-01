@@ -224,6 +224,116 @@ private func makeSnapshot(
         #expect(try Data(contentsOf: fileURL) == contents)
     }
 
+    @Test func summariesKeepTheMemoryComposition() throws {
+        defer { cleanUp() }
+        let store = try HistoryStore(fileURL: fileURL)
+        let snapshot = makeSnapshot(at: 600)
+        try store.record(snapshot, pageoutsPerSecond: nil)
+        try store.applyRetention(now: Date(timeIntervalSince1970: 600 + 8 * day))
+
+        #expect(try store.readings(from: distantPast, through: distantFuture).isEmpty)
+        let bucket = try #require(store.buckets(from: distantPast, through: distantFuture, duration: 60).first)
+        #expect(bucket.averageAppBytes == Double(snapshot.appBytes))
+        #expect(bucket.averageWiredBytes == Double(snapshot.wiredBytes))
+        #expect(bucket.averageCompressedBytes == Double(snapshot.compressedBytes))
+        #expect(bucket.averageCachedBytes == Double(snapshot.cachedBytes))
+        #expect(bucket.averageFreeBytes == Double(snapshot.freeBytes))
+    }
+
+    @Test func bucketsWeighReadingsAndSummariesBySampleCount() throws {
+        defer { cleanUp() }
+        let store = try HistoryStore(fileURL: fileURL)
+        // Three readings become one summary. A newer reading in the same hour stays raw.
+        let start = 3_600.0
+        for offset in [0.0, 10, 20] {
+            try store.record(makeSnapshot(at: start + offset, usedPages: 100), pageoutsPerSecond: nil)
+        }
+        try store.applyRetention(
+            RetentionPolicy(readingRetention: 600, summaryRetention: 90 * day),
+            now: Date(timeIntervalSince1970: start + 700)
+        )
+        try store.record(
+            makeSnapshot(at: start + 1_000, usedPages: 500, swapUsedBytes: 5_000, pressureLevel: .warning),
+            pageoutsPerSecond: nil
+        )
+
+        let buckets = try store.buckets(from: distantPast, through: distantFuture, duration: 3_600)
+        let bucket = try #require(buckets.first)
+        #expect(buckets.count == 1)
+        #expect(bucket.start.timeIntervalSince1970 == start)
+        #expect(bucket.sampleCount == 4)
+        // Three at 1,050 bytes and one at 5,050 bytes, not the average of two averages.
+        #expect(bucket.averageUsedBytes == 2_050)
+        #expect(bucket.maximumUsedBytes == 5_050)
+        #expect(bucket.averageSwapUsedBytes == 2_000)
+        #expect(bucket.maximumSwapUsedBytes == 5_000)
+        #expect(bucket.worstPressureLevel == .warning)
+        #expect(bucket.elevatedSampleCount == 1)
+    }
+
+    @Test func bucketsRespectThePeriodAndOmitEmptyTime() throws {
+        defer { cleanUp() }
+        let store = try HistoryStore(fileURL: fileURL)
+        for timestamp in [100.0, 170, 700, 1_300] {
+            try store.record(makeSnapshot(at: timestamp), pageoutsPerSecond: nil)
+        }
+        let buckets = try store.buckets(
+            from: Date(timeIntervalSince1970: 150),
+            through: Date(timeIntervalSince1970: 800),
+            duration: 60
+        )
+        #expect(buckets.map(\.start.timeIntervalSince1970) == [120, 660])
+    }
+
+    @Test func migratesAFirstVersionDatabaseWithoutLosingData() throws {
+        defer { cleanUp() }
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        var handle: OpaquePointer?
+        #expect(sqlite3_open(fileURL.path, &handle) == SQLITE_OK)
+        let firstVersion = """
+            CREATE TABLE readings (
+                timestamp REAL PRIMARY KEY, physical_bytes INTEGER NOT NULL, used_bytes INTEGER NOT NULL,
+                app_bytes INTEGER NOT NULL, wired_bytes INTEGER NOT NULL, compressed_bytes INTEGER NOT NULL,
+                cached_bytes INTEGER NOT NULL, free_bytes INTEGER NOT NULL, swap_total_bytes INTEGER NOT NULL,
+                swap_used_bytes INTEGER NOT NULL, pageouts_per_second REAL, pressure_level INTEGER NOT NULL
+            ) WITHOUT ROWID;
+            CREATE TABLE minute_summaries (
+                minute INTEGER PRIMARY KEY, sample_count INTEGER NOT NULL, average_used_bytes REAL NOT NULL,
+                maximum_used_bytes INTEGER NOT NULL, average_compressed_bytes REAL NOT NULL,
+                maximum_compressed_bytes INTEGER NOT NULL, average_swap_used_bytes REAL NOT NULL,
+                maximum_swap_used_bytes INTEGER NOT NULL, average_pageouts_per_second REAL,
+                maximum_pageouts_per_second REAL, worst_pressure_level INTEGER NOT NULL,
+                elevated_sample_count INTEGER NOT NULL
+            );
+            INSERT INTO readings VALUES (5000, 100, 40, 10, 10, 20, 5, 5, 8, 2, NULL, 1);
+            INSERT INTO minute_summaries VALUES (10, 3, 30, 35, 6, 7, 2, 3, NULL, NULL, 2, 1);
+            PRAGMA user_version = 1;
+            """
+        #expect(sqlite3_exec(handle, firstVersion, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(handle)
+
+        do {
+            let store = try HistoryStore(fileURL: fileURL)
+            #expect(try store.readings(from: distantPast, through: distantFuture).count == 1)
+            let old = try #require(store.buckets(from: distantPast, through: Date(timeIntervalSince1970: 1_000), duration: 60).first)
+            #expect(old.sampleCount == 3)
+            #expect(old.averageUsedBytes == 30)
+            #expect(old.averageAppBytes == nil)
+            #expect(old.averageCachedBytes == nil)
+
+            // New summaries are stored normally after the migration.
+            try store.applyRetention(now: Date(timeIntervalSince1970: 5_000 + 8 * day))
+            let summaries = try store.minuteSummaries(from: distantPast, through: distantFuture)
+            #expect(summaries.isEmpty || summaries.allSatisfy { $0.sampleCount > 0 })
+        }
+
+        // Opening a migrated database again must not migrate twice.
+        _ = try HistoryStore(fileURL: fileURL)
+    }
+
     @Test func refusesADatabaseFromANewerVersion() throws {
         defer { cleanUp() }
         do {

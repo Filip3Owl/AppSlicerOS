@@ -33,6 +33,54 @@ public struct MinuteSummary: Equatable, Sendable {
     public let elevatedSampleCount: Int
 }
 
+/// Readings and summaries combined into one period of a chart. Composition values are `nil`
+/// only for summaries written before the history stored them.
+public struct HistoryBucket: Equatable, Sendable {
+    public let start: Date
+    public let sampleCount: Int
+    public let averageUsedBytes: Double
+    public let maximumUsedBytes: UInt64
+    public let averageAppBytes: Double?
+    public let averageWiredBytes: Double?
+    public let averageCompressedBytes: Double
+    public let averageCachedBytes: Double?
+    public let averageFreeBytes: Double?
+    public let averageSwapUsedBytes: Double
+    public let maximumSwapUsedBytes: UInt64
+    public let worstPressureLevel: MemoryPressureLevel
+    public let elevatedSampleCount: Int
+
+    public init(
+        start: Date,
+        sampleCount: Int,
+        averageUsedBytes: Double,
+        maximumUsedBytes: UInt64,
+        averageAppBytes: Double?,
+        averageWiredBytes: Double?,
+        averageCompressedBytes: Double,
+        averageCachedBytes: Double?,
+        averageFreeBytes: Double?,
+        averageSwapUsedBytes: Double,
+        maximumSwapUsedBytes: UInt64,
+        worstPressureLevel: MemoryPressureLevel,
+        elevatedSampleCount: Int
+    ) {
+        self.start = start
+        self.sampleCount = sampleCount
+        self.averageUsedBytes = averageUsedBytes
+        self.maximumUsedBytes = maximumUsedBytes
+        self.averageAppBytes = averageAppBytes
+        self.averageWiredBytes = averageWiredBytes
+        self.averageCompressedBytes = averageCompressedBytes
+        self.averageCachedBytes = averageCachedBytes
+        self.averageFreeBytes = averageFreeBytes
+        self.averageSwapUsedBytes = averageSwapUsedBytes
+        self.maximumSwapUsedBytes = maximumSwapUsedBytes
+        self.worstPressureLevel = worstPressureLevel
+        self.elevatedSampleCount = elevatedSampleCount
+    }
+}
+
 public struct RetentionPolicy: Equatable, Sendable {
     public var readingRetention: TimeInterval
     public var summaryRetention: TimeInterval
@@ -49,12 +97,13 @@ public struct RetentionPolicy: Equatable, Sendable {
 /// Stores system-wide memory history in a local SQLite database. It holds no per-process
 /// data, because the model does not need it and app names reveal usage habits.
 public final class HistoryStore {
-    private static let schemaVersion = 1
+    private static let schemaVersion = 2
 
     private let database: SQLiteConnection
     private let insertReading: SQLiteStatement
     private let selectReadings: SQLiteStatement
     private let selectSummaries: SQLiteStatement
+    private let selectBuckets: SQLiteStatement
     private let summarizeReadings: SQLiteStatement
     private let deleteReadings: SQLiteStatement
     private let deleteSummaries: SQLiteStatement
@@ -97,14 +146,54 @@ public final class HistoryStore {
                 worst_pressure_level, elevated_sample_count
             FROM minute_summaries WHERE minute >= ? AND minute <= ? ORDER BY minute
             """)
+        // Readings and summaries never overlap, because retention deletes each reading in
+        // the same transaction that summarizes it. Each row counts by its sample count.
+        selectBuckets = try database.prepare("""
+            SELECT CAST(time / ?1 AS INTEGER) * ?1,
+                SUM(samples),
+                SUM(used * samples) / SUM(samples),
+                MAX(peak_used),
+                SUM(app * samples) / SUM(CASE WHEN app IS NULL THEN 0 ELSE samples END),
+                SUM(wired * samples) / SUM(CASE WHEN wired IS NULL THEN 0 ELSE samples END),
+                SUM(compressed * samples) / SUM(samples),
+                SUM(cached * samples) / SUM(CASE WHEN cached IS NULL THEN 0 ELSE samples END),
+                SUM(free * samples) / SUM(CASE WHEN free IS NULL THEN 0 ELSE samples END),
+                SUM(swap * samples) / SUM(samples),
+                MAX(peak_swap),
+                MAX(pressure),
+                SUM(elevated)
+            FROM (
+                SELECT timestamp AS time, 1 AS samples, used_bytes AS used, used_bytes AS peak_used,
+                    app_bytes AS app, wired_bytes AS wired, compressed_bytes AS compressed,
+                    cached_bytes AS cached, free_bytes AS free, swap_used_bytes AS swap,
+                    swap_used_bytes AS peak_swap, pressure_level AS pressure,
+                    pressure_level > 1 AS elevated
+                FROM readings WHERE timestamp >= ?2 AND timestamp <= ?3
+                UNION ALL
+                SELECT minute * 60, sample_count, average_used_bytes, maximum_used_bytes,
+                    average_app_bytes, average_wired_bytes, average_compressed_bytes,
+                    average_cached_bytes, average_free_bytes, average_swap_used_bytes,
+                    maximum_swap_used_bytes, worst_pressure_level, elevated_sample_count
+                FROM minute_summaries WHERE minute >= ?4 AND minute <= ?5
+            )
+            GROUP BY CAST(time / ?1 AS INTEGER)
+            ORDER BY 1
+            """)
         // A minute already summarized keeps its summary. This only happens if the clock
         // moves back, and a few lost readings are better than a corrupted average.
         summarizeReadings = try database.prepare("""
-            INSERT INTO minute_summaries
+            INSERT INTO minute_summaries (
+                minute, sample_count, average_used_bytes, maximum_used_bytes,
+                average_compressed_bytes, maximum_compressed_bytes, average_swap_used_bytes,
+                maximum_swap_used_bytes, average_pageouts_per_second, maximum_pageouts_per_second,
+                worst_pressure_level, elevated_sample_count, average_app_bytes,
+                average_wired_bytes, average_cached_bytes, average_free_bytes
+            )
             SELECT CAST(timestamp / 60 AS INTEGER), COUNT(*), AVG(used_bytes), MAX(used_bytes),
                 AVG(compressed_bytes), MAX(compressed_bytes), AVG(swap_used_bytes), MAX(swap_used_bytes),
                 AVG(pageouts_per_second), MAX(pageouts_per_second), MAX(pressure_level),
-                SUM(pressure_level > 1)
+                SUM(pressure_level > 1), AVG(app_bytes), AVG(wired_bytes), AVG(cached_bytes),
+                AVG(free_bytes)
             FROM readings WHERE timestamp < ?
             GROUP BY CAST(timestamp / 60 AS INTEGER)
             ON CONFLICT (minute) DO NOTHING
@@ -188,6 +277,36 @@ public final class HistoryStore {
         }
     }
 
+    /// Combines readings and minute summaries into periods of the given length.
+    public func buckets(
+        from start: Date,
+        through end: Date,
+        duration: TimeInterval
+    ) throws -> [HistoryBucket] {
+        selectBuckets.bind(duration, at: 1)
+        selectBuckets.bind(start.timeIntervalSince1970, at: 2)
+        selectBuckets.bind(end.timeIntervalSince1970, at: 3)
+        selectBuckets.bind(Self.minute(containing: start), at: 4)
+        selectBuckets.bind(Self.minute(containing: end), at: 5)
+        return try selectBuckets.rows { row in
+            HistoryBucket(
+                start: Date(timeIntervalSince1970: row.double(at: 0)),
+                sampleCount: Int(row.int64(at: 1)),
+                averageUsedBytes: row.double(at: 2),
+                maximumUsedBytes: row.unsignedInt(at: 3),
+                averageAppBytes: row.optionalDouble(at: 4),
+                averageWiredBytes: row.optionalDouble(at: 5),
+                averageCompressedBytes: row.double(at: 6),
+                averageCachedBytes: row.optionalDouble(at: 7),
+                averageFreeBytes: row.optionalDouble(at: 8),
+                averageSwapUsedBytes: row.double(at: 9),
+                maximumSwapUsedBytes: row.unsignedInt(at: 10),
+                worstPressureLevel: try Self.pressureLevel(row.int64(at: 11)),
+                elevatedSampleCount: Int(row.int64(at: 12))
+            )
+        }
+    }
+
     private static func minute(containing date: Date) -> Double {
         (date.timeIntervalSince1970 / 60).rounded(.down)
     }
@@ -232,8 +351,24 @@ public final class HistoryStore {
         // Lets each reading be written without forcing the disk to sync.
         try database.execute("PRAGMA journal_mode = WAL")
         try database.execute("PRAGMA synchronous = NORMAL")
-        guard version == 0 else { return }
 
+        if version == 0 {
+            try createFirstSchema(database)
+        }
+        if version < 2 {
+            try database.transaction {
+                try database.execute("""
+                    ALTER TABLE minute_summaries ADD COLUMN average_app_bytes REAL;
+                    ALTER TABLE minute_summaries ADD COLUMN average_wired_bytes REAL;
+                    ALTER TABLE minute_summaries ADD COLUMN average_cached_bytes REAL;
+                    ALTER TABLE minute_summaries ADD COLUMN average_free_bytes REAL;
+                    PRAGMA user_version = 2;
+                    """)
+            }
+        }
+    }
+
+    private static func createFirstSchema(_ database: SQLiteConnection) throws {
         try database.transaction {
             try database.execute("""
                 CREATE TABLE readings (
@@ -266,7 +401,7 @@ public final class HistoryStore {
                     elevated_sample_count INTEGER NOT NULL
                 );
 
-                PRAGMA user_version = \(schemaVersion);
+                PRAGMA user_version = 1;
                 """)
         }
     }
