@@ -107,9 +107,10 @@ swift run appslicer-app
 ```
 
 O app abre uma janela e adiciona um item à barra de menus. Ele lê as métricas ao vivo
-apenas enquanto uma janela ou o painel da barra de menus estiver à vista, e mostra o
-histórico e as previsões salvos pelo coletor. Ele segue o idioma do sistema, e você pode
-experimentar o português com:
+apenas enquanto uma janela ou o painel da barra de menus estiver visível, então as
+leituras pausam com a janela fechada, minimizada ou totalmente coberta. Ele mostra o
+histórico e as previsões salvos pelo coletor. Use `Command-1` a `Command-4` para trocar de
+página. O app segue o idioma do sistema, e você pode experimentar o português com:
 
 ```sh
 swift run appslicer-app -AppleLanguages '(pt-BR)'
@@ -270,7 +271,7 @@ O roadmap é inicial e pode mudar à medida que o projeto gerar dados reais.
 - [x] Oferecer temas claro e escuro
 - [x] Traduzir a interface para inglês e português do Brasil
 - [ ] Verificar o VoiceOver e a navegação por teclado
-- [ ] Medir a interface em relação às metas de RAM e CPU em uso prolongado
+- [x] Medir a interface em relação às metas de RAM e CPU em uso prolongado
 
 ### Fase 4: validação com dados reais
 

@@ -106,8 +106,10 @@ swift run appslicer-app
 ```
 
 The app opens a window and adds an item to the menu bar. It reads live metrics only while
-a window or the menu bar panel is showing, and it shows the history and forecasts saved
-by the collector. It follows your system language, and you can try Portuguese with:
+a window or the menu bar panel is visible, so readings pause when the window is closed,
+minimized, or fully covered. It shows the history and forecasts saved by the collector.
+Press `Command-1` to `Command-4` to switch pages. The app follows your system language,
+and you can try Portuguese with:
 
 ```sh
 swift run appslicer-app -AppleLanguages '(pt-BR)'
@@ -267,7 +269,7 @@ This is an initial roadmap and may change as the project produces real data.
 - [x] Support light and dark mode
 - [x] Localize the interface in English and Brazilian Portuguese
 - [ ] Verify VoiceOver and keyboard navigation
-- [ ] Measure the interface against the RAM and CPU targets in prolonged use
+- [x] Measure the interface against the RAM and CPU targets in prolonged use
 
 ### Phase 4: validation with real data
 
