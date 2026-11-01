@@ -41,11 +41,21 @@ public struct AppMemory: Equatable, Sendable {
 public struct AppMemoryReport: Equatable, Sendable {
     /// Sorted by footprint, largest first.
     public let apps: [AppMemory]
+    /// Readable background services and tools that do not belong to a listed app.
+    public let otherFootprintBytes: UInt64
+    public let otherProcessCount: Int
     /// Processes the current user lacks permission to read, such as system services.
     public let unreadableCount: Int
 
-    public init(apps: [AppMemory], unreadableCount: Int) {
+    public init(
+        apps: [AppMemory],
+        otherFootprintBytes: UInt64,
+        otherProcessCount: Int,
+        unreadableCount: Int
+    ) {
         self.apps = apps
+        self.otherFootprintBytes = otherFootprintBytes
+        self.otherProcessCount = otherProcessCount
         self.unreadableCount = unreadableCount
     }
 }
@@ -64,24 +74,41 @@ public struct ProcessMemoryReader: Sendable {
 
     public func readApps(limit: Int) throws -> AppMemoryReport {
         let result = try readProcesses(includingPaths: true)
-        let grouped = result.processes.map { entry in
-            (name: Self.appName(forExecutablePath: entry.path, fallback: entry.process.name),
-             footprintBytes: entry.process.footprintBytes)
+        var appProcesses: [(name: String, footprintBytes: UInt64)] = []
+        var otherFootprintBytes: UInt64 = 0
+        var otherProcessCount = 0
+        for entry in result.processes {
+            if let name = Self.appName(forExecutablePath: entry.path) {
+                appProcesses.append((name, entry.process.footprintBytes))
+            } else {
+                otherFootprintBytes += entry.process.footprintBytes
+                otherProcessCount += 1
+            }
         }
         return AppMemoryReport(
-            apps: Self.grouped(grouped, limit: limit),
+            apps: Self.grouped(appProcesses, limit: limit),
+            otherFootprintBytes: otherFootprintBytes,
+            otherProcessCount: otherProcessCount,
             unreadableCount: result.unreadableCount
         )
     }
 
-    /// Uses the outermost app bundle in the path, so a helper nested inside an app counts
-    /// toward that app. Anything outside a bundle keeps its process name.
-    static func appName(forExecutablePath path: String?, fallback: String) -> String {
-        guard let path else { return fallback }
-        for component in path.split(separator: "/") where component.hasSuffix(".app") {
-            return String(component.dropLast(4))
-        }
-        return fallback
+    /// Returns the app that owns an executable, or `nil` for services and tools. Only the
+    /// standard app folders count, because macOS also keeps background services in bundles
+    /// elsewhere, such as `/System/Library/CoreServices`. The outermost bundle is used, so
+    /// a helper nested inside an app counts toward that app.
+    static func appName(forExecutablePath path: String?) -> String? {
+        guard let path else { return nil }
+        let components = path.split(separator: "/")
+        guard let bundleIndex = components.firstIndex(where: { $0.hasSuffix(".app") }) else { return nil }
+
+        let folders = components[..<bundleIndex]
+        let isInSystemApps = folders.starts(with: ["System", "Applications"])
+        let isInApps = folders.first == "Applications"
+        let isInUserApps = folders.count >= 3 && folders.first == "Users"
+            && folders[folders.startIndex + 2] == "Applications"
+        guard isInSystemApps || isInApps || isInUserApps else { return nil }
+        return String(components[bundleIndex].dropLast(4))
     }
 
     static func grouped(

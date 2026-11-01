@@ -100,11 +100,26 @@ struct StatTile: View {
 
 struct PillButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 18)
-            .frame(minHeight: 44)
-            .background(Color.primary.opacity(configuration.isPressed ? 0.16 : 0.08), in: Capsule())
-            .contentShape(Capsule())
+        PillLabel(configuration: configuration)
+    }
+
+    /// Custom button styles do not draw the system focus ring, so this one draws its own.
+    private struct PillLabel: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isFocused) private var isFocused
+
+        var body: some View {
+            configuration.label
+                .padding(.horizontal, 18)
+                .frame(minHeight: 44)
+                .background(Color.primary.opacity(configuration.isPressed ? 0.16 : 0.08), in: Capsule())
+                .overlay {
+                    if isFocused {
+                        Capsule().strokeBorder(Color.accentColor, lineWidth: 3)
+                    }
+                }
+                .contentShape(Capsule())
+        }
     }
 }
 

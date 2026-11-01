@@ -35,7 +35,9 @@
 "collection.stopped" = "The background collection has stopped, so the history and the model are not being updated.";
 "collection.never" = "The background collection has not started yet, so there is no history to show.";
 
-"apps.detail" = "Apps using the most memory, with their helper processes combined.";
+"apps.detail" = "Open apps using the most memory, with their helper processes combined.";
+"apps.other.title" = "Background services and tools";
+"apps.other.detail" = "%d processes that do not belong to the apps above.";
 "apps.processes" = "%d processes";
 "apps.unreadable" = "%d system processes cannot be read without administrator access and are not listed.";
 

@@ -12,6 +12,15 @@ struct AppSlicerApp: App {
                 .environmentObject(model)
         }
         .defaultSize(width: 1_080, height: 760)
+        .commands {
+            CommandGroup(before: .sidebar) {
+                ForEach(AppSection.allCases) { section in
+                    Button(section.title) { model.section = section }
+                        .keyboardShortcut(section.shortcut, modifiers: .command)
+                }
+                Divider()
+            }
+        }
 
         MenuBarExtra("AppSlicerOS", systemImage: "memorychip") {
             MenuBarView()

@@ -89,7 +89,8 @@ struct MemoryChart: View {
             ForEach(points) { point in
                 LineMark(
                     x: .value(L("chart.axis.time"), point.date),
-                    y: .value(L("chart.axis.used"), point.usedGigabytes)
+                    y: .value(L("chart.axis.used"), point.usedGigabytes),
+                    series: .value("Segment", point.segment)
                 )
                 .foregroundStyle(Color.primary)
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
